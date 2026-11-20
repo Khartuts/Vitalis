@@ -1,9 +1,10 @@
 # Reproducible builds and tests on real Windows / Linux runners.
-# Covers what the Linux development container could not: running the bundled Windows engine (NumPy/SciPy)
-# and installing the NSIS installer on Windows.
+# Pushing a tag like v0.1.0 additionally publishes the Windows installer and Android APKs to GitHub Releases.
 name: build-and-test
 on:
   push:
+    branches: ["**"]
+    tags: ["v*"]
   pull_request:
   workflow_dispatch:
 
@@ -24,7 +25,7 @@ jobs:
           python -m pip install -e .
       - name: Run engine tests
         working-directory: services/engine
-        run: python -m pytest -q
+        run: python -m pytest -rN
 
   desktop-and-installer:
     runs-on: windows-2022
@@ -35,7 +36,7 @@ jobs:
         with: { python-version: "3.12" }
       - uses: actions/setup-node@v4
         with: { node-version: "22" }
-      - name: Bundle Windows engine runtime
+      - name: Bundle Windows engine runtime (includes a self-test of the bundled interpreter)
         shell: bash
         run: HOSTPY=python scripts/build-windows-runtime.sh
       - name: Smoke-test bundled engine (stdio JSON-RPC)
@@ -51,17 +52,22 @@ jobs:
       - name: Build NSIS installer
         working-directory: apps/desktop
         run: npx electron-builder --win nsis --x64 --publish never
-      - name: Silent install check
+      - name: Silent install and smoke-test the installed engine
         shell: pwsh
         run: |
-          Start-Process -Wait -FilePath "apps/desktop/release/VITALIS-Setup-0.1.0-x64.exe" -ArgumentList "/S"
-          $p = Join-Path $env:LOCALAPPDATA "Programs/VITALIS/resources/engine/python/python.exe"
-          if (!(Test-Path $p)) { throw "engine runtime not installed at $p" }
-          & $p -I -c "import numpy, scipy, pandas, statsmodels, sqlcipher3, vitalis_engine; print('ok')"
+          $exe = Get-ChildItem apps/desktop/release/VITALIS-Setup-*-x64.exe | Select-Object -First 1
+          Start-Process -Wait -FilePath $exe.FullName -ArgumentList "/S"
+          $py = Get-ChildItem -Path (Join-Path $env:LOCALAPPDATA "Programs") -Recurse -Filter python.exe -ErrorAction SilentlyContinue |
+                Where-Object { $_.FullName -like "*resources*engine*python*" } | Select-Object -First 1
+          if (-not $py) { throw "installed engine runtime not found under $env:LOCALAPPDATA\Programs" }
+          Write-Host "Installed engine: $($py.FullName)"
+          python scripts/smoke_engine.py $py.FullName
+          if ($LASTEXITCODE -ne 0) { throw "installed engine smoke test failed" }
       - uses: actions/upload-artifact@v4
         with:
           name: vitalis-windows-installer
           path: apps/desktop/release/*.exe
+          if-no-files-found: error
 
   android:
     runs-on: ubuntu-24.04
@@ -69,11 +75,47 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: "21" }
-      - uses: android-actions/setup-android@v3
+      - name: Android SDK packages (runner's preinstalled SDK)
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0"
       - name: Unit tests, lint and APKs
         working-directory: apps/android
-        run: ./gradlew --no-daemon :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleRelease
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleRelease
       - uses: actions/upload-artifact@v4
         with:
           name: vitalis-companion-apk
           path: apps/android/app/build/outputs/apk/**/*.apk
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [desktop-and-installer, android]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { path: dist, merge-multiple: true }
+      - name: Collect files and checksums
+        run: |
+          mkdir -p out
+          find dist -name "*.exe" -exec cp {} out/ \;
+          cp "$(find dist -name 'app-debug.apk' | head -1)" "out/VITALIS-Companion-${GITHUB_REF_NAME}-debug.apk"
+          cp "$(find dist -name 'app-release-unsigned.apk' | head -1)" "out/VITALIS-Companion-${GITHUB_REF_NAME}-release-unsigned.apk"
+          (cd out && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt)
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: out/*
+          body: |
+            VITALIS ${{ github.ref_name }}
+
+            * `VITALIS-Setup-*-x64.exe` — Windows 11 installer (unsigned: SmartScreen → More info → Run anyway).
+            * `VITALIS-Companion-*-debug.apk` — Android companion, debug-signed, sideloadable.
+            * `VITALIS-Companion-*-release-unsigned.apk` — release build; sign it with your own key.
+            * `SHA256SUMS.txt` — checksums.
+
+            Built and tested by the build-and-test workflow (engine tests on Linux + Windows, installer silent-install
+            and engine smoke test on Windows). See INSTALLATION.md. Not a medical device.

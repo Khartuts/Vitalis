@@ -2,9 +2,11 @@
 init -> system.status -> demo.load (synthetic) -> overview.get -> shutdown. Exit code 0 on success."""
 import json, os, subprocess, sys, tempfile
 
-py = sys.argv[1] if len(sys.argv) > 1 else sys.executable
+py = os.path.abspath(sys.argv[1]) if len(sys.argv) > 1 else sys.executable  # absolute, like the desktop app
 db = os.path.join(tempfile.mkdtemp(), "smoke.db")
-p = subprocess.Popen([py, "-I", "-m", "vitalis_engine"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+print("interpreter:", py)
+p = subprocess.Popen([py, "-I", "-m", "vitalis_engine"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True,
+                     cwd=os.path.dirname(os.path.dirname(py)))
 
 def send(o):
     p.stdin.write(json.dumps(o) + "\n"); p.stdin.flush()
