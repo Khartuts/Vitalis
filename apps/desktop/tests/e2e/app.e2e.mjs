@@ -132,10 +132,11 @@ await step("AI analyst: consent preview, read-only tool call, cited evidence (mo
   assert.ok(!payload.includes("j:alcohol_units"), "private habits must not appear in cloud payloads");
   await shot("06-consent");
   await page.getByTestId("consent-approve").click();
-  await page.getByTestId("consent-dialog").waitFor({ timeout: 30000 }); // round 2 (tool results)
-  const payload2 = await page.getByTestId("consent-payload").innerText();
-  assert.match(payload2, /function_call_output/);
-  await page.getByTestId("consent-approve").click();
+  // Round 2 (tool results). Wait for the new payload itself: the round-1 dialog may still be closing.
+  const dialog2 = page.getByTestId("consent-dialog").filter({ hasText: "function_call_output" });
+  await dialog2.waitFor({ timeout: 30000 });
+  assert.match(await dialog2.getByTestId("consent-payload").innerText(), /function_call_output/);
+  await dialog2.getByTestId("consent-approve").click();
   await page.getByTestId("ai-answer").last().waitFor({ timeout: 30000 });
   const chip = page.getByTestId("evidence-chip").first();
   await chip.waitFor();
