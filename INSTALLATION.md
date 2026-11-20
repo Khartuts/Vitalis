@@ -4,7 +4,8 @@
 
 Installers are published on the repository's **Releases** page: <https://github.com/Khartuts/Vitalis/releases>
 (`VITALIS-Setup-<version>-x64.exe`, the companion APKs and `SHA256SUMS.txt`). They are built and tested by the
-`build-and-test` GitHub Actions workflow when a version tag (`v*`) is pushed. Every run also keeps the installer and
+`build-and-test` GitHub Actions workflow, which publishes a release when a version tag (`v*`) is pushed, or when the
+repository owner runs it from **Actions → build-and-test → Run workflow** with a release tag such as `v0.1.0`. Every run also keeps the installer and
 APKs as downloadable workflow artifacts (Actions → the run → *Artifacts*; needs a GitHub login, kept 90 days).
 
 Verify a download (PowerShell): `Get-FileHash .\VITALIS-Setup-0.1.0-x64.exe -Algorithm SHA256` and compare with
