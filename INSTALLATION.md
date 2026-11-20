@@ -1,8 +1,18 @@
 # Installation
 
+## Downloads
+
+Installers are published on the repository's **Releases** page: <https://github.com/Khartuts/Vitalis/releases>
+(`VITALIS-Setup-<version>-x64.exe`, the companion APKs and `SHA256SUMS.txt`). They are built and tested by the
+`build-and-test` GitHub Actions workflow when a version tag (`v*`) is pushed. Every run also keeps the installer and
+APKs as downloadable workflow artifacts (Actions → the run → *Artifacts*; needs a GitHub login, kept 90 days).
+
+Verify a download (PowerShell): `Get-FileHash .\VITALIS-Setup-0.1.0-x64.exe -Algorithm SHA256` and compare with
+`SHA256SUMS.txt`.
+
 ## 1. Windows desktop app (end users)
 
-1. Run `VITALIS-Setup-0.1.0-x64.exe`. The installer is **not code-signed** yet, so Windows SmartScreen will say
+1. Download and run `VITALIS-Setup-0.1.0-x64.exe`. The installer is **not code-signed** yet, so Windows SmartScreen will say
    "Windows protected your PC" → *More info* → *Run anyway* (see "Code signing" below).
 2. Choose an install folder (per-user install, no admin rights needed). Everything the app needs — including its own
    Python runtime — is bundled; you do not need to install Python or Node.js.
@@ -20,7 +30,8 @@ electron-builder (`CSC_LINK`, `CSC_KEY_PASSWORD` or Azure signing options), then
 
 Requirements: Android 9+ (Health Connect), Samsung Health ≥ 6.30.2 for the optional Samsung SDK.
 
-1. Copy `app-debug.apk` (or your signed release APK) to the phone and open it; allow "Install unknown apps" for
+1. Copy the companion APK from the Releases page (`VITALIS-Companion-<version>-debug.apk`, or your own signed
+   release build) to the phone and open it; allow "Install unknown apps" for
    your file manager when asked.
 2. **Health Connect:** on Android 14+ it is built in (Settings → Security & privacy → Privacy → Health Connect);
    on Android 13 and lower install "Health Connect" from Google Play.

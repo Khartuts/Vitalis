@@ -1,4 +1,4 @@
-// End-to-end test of the real Electron app (run under Xvfb): node tests/e2e/app.e2e.mjs
+// End-to-end test of the real Electron app: node tests/e2e/app.e2e.mjs (Linux: under xvfb-run; Windows: directly)
 // Covers: demo profile, every screen renders, journal save, correlation lab, AI analyst with consent + tool call +
 // evidence (mock OpenAI server), PDF export, real profile creation, phone pairing + pinned-TLS batch sync.
 import assert from "node:assert/strict";
@@ -29,10 +29,11 @@ const step = async (name, fn) => {
 
 const mock = await startMockOpenAI();
 const app = await pw._electron.launch({
-  executablePath: path.join(appDir, "node_modules", "electron", "dist", "electron"),
+  executablePath: createRequire(path.join(appDir, "package.json"))("electron"), // platform-specific binary path
   args: [appDir, "--no-sandbox"],
   env: { ...process.env, VITALIS_TEST: "1", VITALIS_TEST_INSECURE_KEYSTORE: "1", VITALIS_USER_DATA: userData,
-    VITALIS_PYTHON: path.join(engineDir, ".venv", "bin", "python"), VITALIS_ENGINE_DIR: engineDir,
+    VITALIS_PYTHON: process.env.VITALIS_PYTHON ?? path.join(engineDir, ".venv", process.platform === "win32" ? "Scripts" : "bin",
+      process.platform === "win32" ? "python.exe" : "python"), VITALIS_ENGINE_DIR: engineDir,
     VITALIS_TEST_SAVE_DIR: saveDir, VITALIS_OPENAI_BASE_URL: `http://127.0.0.1:${mock.port}/v1` },
 });
 const page = await app.firstWindow();

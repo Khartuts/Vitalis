@@ -26,7 +26,7 @@ export class EngineError extends Error {
   }
 }
 
-/** Resolve how to launch the engine: env override (tests), packaged runtime, or the dev virtualenv. */
+/** Resolve how to launch the engine: packaged runtime, env override (development/tests), or the dev virtualenv. */
 export function resolveEngineCommand(opts: { isPackaged: boolean; resourcesPath: string; appPath: string }): EngineCommand {
   const baseEnv: NodeJS.ProcessEnv = {
     PYTHONUNBUFFERED: "1", PYTHONIOENCODING: "utf-8", PYTHONDONTWRITEBYTECODE: "1", PYTHONNOUSERSITE: "1",
@@ -34,16 +34,16 @@ export function resolveEngineCommand(opts: { isPackaged: boolean; resourcesPath:
     TMPDIR: process.env.TMPDIR, HOME: process.env.HOME, USERPROFILE: process.env.USERPROFILE,
     LOCALAPPDATA: process.env.LOCALAPPDATA,
   };
-  if (process.env.VITALIS_PYTHON) {
-    return { command: process.env.VITALIS_PYTHON, args: ["-m", "vitalis_engine"],
-      cwd: process.env.VITALIS_ENGINE_DIR ?? process.cwd(), env: baseEnv };
-  }
   if (opts.isPackaged) {
     // Bundled official CPython for Windows; packages and vitalis_engine live in its own site-packages, so the
     // engine runs in isolated mode (-I: ignores PYTHON* environment variables and the user site directory).
     const root = path.join(opts.resourcesPath, "engine");
     const py = process.platform === "win32" ? path.join(root, "python", "python.exe") : path.join(root, "python", "bin", "python3");
     return { command: py, args: ["-I", "-m", "vitalis_engine"], cwd: root, env: baseEnv };
+  }
+  if (process.env.VITALIS_PYTHON) { // development/tests only: an installed app always uses its bundled runtime
+    return { command: process.env.VITALIS_PYTHON, args: ["-m", "vitalis_engine"],
+      cwd: process.env.VITALIS_ENGINE_DIR ?? process.cwd(), env: baseEnv };
   }
   const engineDir = path.resolve(opts.appPath, "..", "..", "services", "engine");
   const venvPy = process.platform === "win32" ? path.join(engineDir, ".venv", "Scripts", "python.exe")

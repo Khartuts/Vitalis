@@ -25,3 +25,4 @@ playwright-report/
 artifacts/
 # electron-builder resources (icon, installer license) must be tracked despite the generic build/ rule
 !apps/desktop/build/
+*.egg-info/

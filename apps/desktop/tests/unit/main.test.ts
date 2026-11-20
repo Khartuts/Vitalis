@@ -10,13 +10,15 @@ import { Orchestrator } from "../../electron/ai/orchestrator";
 import { chatCompletionsProvider, responsesProvider } from "../../electron/ai/providers";
 import { parseSse } from "../../electron/ai/sse";
 import { SiwcClient } from "../../electron/ai/siwc";
-import { EngineBridge } from "../../electron/engine";
+import { EngineBridge, resolveEngineCommand } from "../../electron/engine";
 import { GoogleHealthClient } from "../../electron/google/health";
 import { insecureTestCipher, ProfileStore, Vault, type Cipher } from "../../electron/vault";
 
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), "vit-unit-"));
 const engineDir = path.resolve(__dirname, "..", "..", "..", "..", "services", "engine");
-const py = path.join(engineDir, ".venv", "bin", "python");
+// The engine interpreter: VITALIS_PYTHON (CI uses the bundled Windows runtime), else the development virtualenv.
+const py = process.env.VITALIS_PYTHON
+  ?? (process.platform === "win32" ? path.join(engineDir, ".venv", "Scripts", "python.exe") : path.join(engineDir, ".venv", "bin", "python"));
 
 function streamOf(text: string) {
   return new ReadableStream<Uint8Array>({ start(c) { for (let i = 0; i < text.length; i += 7) c.enqueue(new TextEncoder().encode(text.slice(i, i + 7))); c.close(); } });
@@ -53,6 +55,21 @@ describe("Vault & profiles", () => {
     expect(fs.existsSync(p.dbFile)).toBe(false);
     expect(() => ps.key(p.id)).toThrow();
     expect(ps.list()).toHaveLength(0);
+  });
+});
+
+describe("Engine command", () => {
+  it("an installed app always runs its bundled runtime in isolated mode, ignoring VITALIS_PYTHON", () => {
+    const saved = process.env.VITALIS_PYTHON;
+    process.env.VITALIS_PYTHON = "/somewhere/else/python";
+    try {
+      const c = resolveEngineCommand({ isPackaged: true, resourcesPath: path.join("R", "resources"), appPath: "A" });
+      expect(c.command.startsWith(path.join("R", "resources", "engine", "python"))).toBe(true);
+      expect(c.args).toEqual(["-I", "-m", "vitalis_engine"]);
+      expect(resolveEngineCommand({ isPackaged: false, resourcesPath: "R", appPath: "A" }).command).toBe("/somewhere/else/python");
+    } finally {
+      if (saved === undefined) delete process.env.VITALIS_PYTHON; else process.env.VITALIS_PYTHON = saved;
+    }
   });
 });
 

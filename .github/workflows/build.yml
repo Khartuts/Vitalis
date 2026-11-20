@@ -42,27 +42,53 @@ jobs:
       - name: Smoke-test bundled engine (stdio JSON-RPC)
         shell: bash
         run: python scripts/smoke_engine.py runtime/engine/python/python.exe
-      - name: Desktop unit tests and build
+      # bash (-e -o pipefail) so that every command's failure fails the step (pwsh only checks the last one).
+      - name: Desktop typecheck, unit tests and build
         working-directory: apps/desktop
+        shell: bash
+        env:
+          VITALIS_PYTHON: ${{ github.workspace }}\runtime\engine\python\python.exe
         run: |
           npm ci
           npm run typecheck
           npm test
           npm run build
+      - name: End-to-end test of the desktop app on Windows (real Electron, bundled engine, mock AI server)
+        working-directory: apps/desktop
+        shell: bash
+        env:
+          VITALIS_PYTHON: ${{ github.workspace }}\runtime\engine\python\python.exe
+          E2E_SHOTS: ${{ runner.temp }}\e2e-shots
+        run: |
+          npm install --no-save playwright@1.63.0
+          node tests/e2e/app.e2e.mjs
       - name: Build NSIS installer
         working-directory: apps/desktop
+        shell: bash
         run: npx electron-builder --win nsis --x64 --publish never
-      - name: Silent install and smoke-test the installed engine
+      - name: Silent install, smoke-test the installed engine, drive the installed app
         shell: pwsh
+        env:
+          E2E_SHOTS: ${{ runner.temp }}\e2e-shots
         run: |
+          $ErrorActionPreference = "Stop"
           $exe = Get-ChildItem apps/desktop/release/VITALIS-Setup-*-x64.exe | Select-Object -First 1
           Start-Process -Wait -FilePath $exe.FullName -ArgumentList "/S"
-          $py = Get-ChildItem -Path (Join-Path $env:LOCALAPPDATA "Programs") -Recurse -Filter python.exe -ErrorAction SilentlyContinue |
-                Where-Object { $_.FullName -like "*resources*engine*python*" } | Select-Object -First 1
-          if (-not $py) { throw "installed engine runtime not found under $env:LOCALAPPDATA\Programs" }
-          Write-Host "Installed engine: $($py.FullName)"
-          python scripts/smoke_engine.py $py.FullName
+          $root = Join-Path $env:LOCALAPPDATA "Programs\VITALIS"
+          $app = Join-Path $root "VITALIS.exe"
+          $py = Join-Path $root "resources\engine\python\python.exe"
+          if (-not (Test-Path $app)) { Get-ChildItem $root -ErrorAction SilentlyContinue; throw "installed app not found: $app" }
+          if (-not (Test-Path $py)) { throw "installed engine runtime not found: $py" }
+          python scripts/smoke_engine.py $py
           if ($LASTEXITCODE -ne 0) { throw "installed engine smoke test failed" }
+          node apps/desktop/tests/e2e/installed.e2e.mjs $app
+          if ($LASTEXITCODE -ne 0) { throw "installed app test failed" }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-test-screenshots
+          path: ${{ runner.temp }}/e2e-shots
+          if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
         with:
           name: vitalis-windows-installer
@@ -117,5 +143,8 @@ jobs:
             * `VITALIS-Companion-*-release-unsigned.apk` — release build; sign it with your own key.
             * `SHA256SUMS.txt` — checksums.
 
-            Built and tested by the build-and-test workflow (engine tests on Linux + Windows, installer silent-install
-            and engine smoke test on Windows). See INSTALLATION.md. Not a medical device.
+            Built and tested by the build-and-test workflow on GitHub-hosted runners: engine tests on Linux and Windows;
+            desktop unit and end-to-end tests on Windows; the installer is silently installed on Windows, its bundled
+            engine smoke-tested and the installed app driven through demo-profile creation and every screen.
+            Android unit tests, lint and builds on Linux (not run on a phone). See INSTALLATION.md and TESTING.md.
+            Not a medical device.
