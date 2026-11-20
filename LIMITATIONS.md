@@ -33,15 +33,14 @@
   WorkManager scheduling and rate limits are unverified on hardware.
 * Built with compileSdk 36 / AGP 8.13; the newest AndroidX/Compose releases (requiring compileSdk 37 / AGP 9.1) were
   intentionally not used.
-* The delivered debug APK is signed with the build machine's debug key (updates require reinstall unless you sign
-  with your own key).
+* The debug APK is signed with the build machine's debug key, and each CI build uses a fresh one: uninstall the old
+  companion before installing a newer debug APK, or sign the release APK with your own key.
 
 ## Windows
 * The installer is **unsigned** (SmartScreen warning).
-* The installer was built but **not installed or launched on real Windows** in this build; a silent install under Wine did not complete.
-* The bundled NumPy/SciPy stack could not be executed under Wine in the build container; Python, SQLCipher, Pydantic
-  and cryptography were verified there. Full verification on Windows is defined in CI (`.github/workflows/build.yml`)
-  but has not run yet (no GitHub remote).
+* Verified on GitHub's Windows Server 2022 runner (silent install, installed engine, installed app through demo-profile
+  creation and every screen — see TESTING.md). **Not yet run by a person on a Windows 11 desktop**: the interactive
+  installer pages, SmartScreen, the firewall prompt and syncing a real phone over Wi-Fi are unverified.
 * Phone sync listens on TCP 47821 on your LAN while enabled; Windows Firewall must allow it on Private networks.
 
 ## Analytics

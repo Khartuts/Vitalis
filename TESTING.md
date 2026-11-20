@@ -1,6 +1,7 @@
 # Testing
 
-All results below were produced in the build environment on 2026-11-20 (Linux x86_64 container, Xvfb). Nothing
+Results below come from two places, both on 2026-11-20: the build environment (Linux x86_64 container, Xvfb) and
+GitHub Actions on GitHub-hosted runners (workflow `build-and-test`, run 44783780670, commit `cbc188a`). Nothing
 listed as "not run" was run.
 
 ## Summary
@@ -14,9 +15,23 @@ listed as "not run" was run.
 | Android lint | `./gradlew :app:lintDebug` | 0 errors (warnings: newer versions available; intentional custom TrustManager for pinning) |
 | Engine smoke (stdio protocol) | `python scripts/smoke_engine.py <python>` | passed with the dev interpreter |
 | Windows bundle under Wine 9 | Windows CPython 3.12.10 + SQLCipher 4.20 + Pydantic + AES-GCM | **passed** |
-| Windows bundle NumPy/SciPy under Wine | — | **could not run**: Wine 9.0 lacks `ucrtbase.crealf`; covered by the Windows CI job (not yet executed — needs a GitHub remote) |
-| Windows installer build | `npx electron-builder --win nsis --x64` | built `VITALIS-Setup-0.1.0-x64.exe` (exit 0) |
-| Windows installer silent install under Wine | `wine VITALIS-Setup-0.1.0-x64.exe /S` | **not verified**: did not finish within 15 min under Wine; covered by the CI job `desktop-and-installer` on a real Windows runner (not yet executed) |
+| Windows bundle NumPy/SciPy under Wine | — | could not run (Wine 9.0 lacks `ucrtbase.crealf`); superseded by the Windows CI rows below |
+
+### GitHub Actions (run 44783780670)
+
+| Job / step | Runner | Result |
+|---|---|---|
+| Engine tests | ubuntu-24.04 and windows-2022 | **49 passed** on each |
+| Bundled Windows runtime: build + self-test (`import numpy, scipy, pandas, sqlcipher3, vitalis_engine`) | windows-2022 | passed |
+| Engine smoke test with the bundled interpreter (stdio JSON-RPC, 45-day demo) | windows-2022 | passed |
+| Desktop typecheck + unit tests (engine bridge uses the bundled Windows interpreter) | windows-2022 | **14 passed** |
+| Desktop end-to-end (real Electron, mock AI server) | windows-2022 | **23/23 steps passed**, 0 console errors |
+| NSIS installer build | windows-2022 | `VITALIS-Setup-0.1.0-x64.exe` built |
+| Silent install (`/S`), then smoke test of the **installed** engine | windows-2022 | passed |
+| Installed app driven by `tests/e2e/installed.e2e.mjs` (packaged build, DPAPI keystore, bundled engine, demo profile, all screens) | windows-2022 | **15/15 steps passed** |
+| Android unit tests, lint, debug + release APKs | ubuntu-24.04 | passed |
+
+`windows-2022` is Windows Server 2022, not a Windows 11 desktop; see "Must be performed…" below for what remains.
 
 ## What the tests cover (requirement → test)
 
@@ -74,17 +89,20 @@ On the user's phone (Galaxy Watch6 paired):
 8. Enable background permission + hourly sync; confirm WorkManager runs (Settings → Apps → Battery usage, or logcat).
 9. Samsung SDK: build with the AAR, enable developer mode, connect, sync; check sleep score/Energy Score arrive.
 
-On Windows 11: install the EXE, launch, create a profile, enable phone sync (allow firewall prompt on Private
-networks), pair, sync, export PDF; run CI job `desktop-and-installer`.
+On a Windows 11 PC (the CI covers silent install and the installed app on Windows Server 2022): run the interactive
+installer (SmartScreen, install-folder page), create a real profile, enable phone sync (allow the firewall prompt on
+Private networks), pair a real phone over Wi-Fi, sync, export a PDF through the real save dialog, uninstall.
 
 With accounts: Sign in with ChatGPT (eligible Plus/Pro), an OpenAI API key, a Google Cloud OAuth client + Google
 Health account. None were available in the build environment.
 
-## Reproducing the E2E run
+## Reproducing the E2E runs
 ```bash
 cd apps/desktop && npm run build
-xvfb-run -a -s "-screen 0 1700x1100x24" node tests/e2e/app.e2e.mjs   # screenshots in $E2E_SHOTS or a temp dir
+xvfb-run -a -s "-screen 0 1700x1100x24" node tests/e2e/app.e2e.mjs   # Linux; on Windows run node directly
+node tests/e2e/installed.e2e.mjs "%LOCALAPPDATA%\Programs\VITALIS\VITALIS.exe"   # Windows, after installing
 ```
+Screenshots go to `$E2E_SHOTS` or a temp dir; the CI uploads them as the `windows-test-screenshots` artifact.
 The E2E run uses `VITALIS_TEST=1` hooks that exist only in unpackaged builds: an explicit insecure test keystore (the
 container has no OS keyring), a mock OpenAI base URL, and auto-answered save dialogs.
 

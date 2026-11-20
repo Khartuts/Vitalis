@@ -31,7 +31,8 @@ cd ../android && ./gradlew :app:assembleDebug        # app/build/outputs/apk/deb
 scripts/build-windows-runtime.sh && cd apps/desktop && npx electron-builder --win nsis --x64 --publish never
 ```
 
-End users: see [INSTALLATION.md](INSTALLATION.md).
+End users: download the installer and APK from [Releases](https://github.com/Khartuts/Vitalis/releases) and see
+[INSTALLATION.md](INSTALLATION.md).
 
 ## Status at a glance (details: [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md))
 
@@ -43,4 +44,4 @@ End users: see [INSTALLATION.md](INSTALLATION.md).
 | Google Health API v4 connector | Implemented; tested against mocks. **Not yet verified against the real API** (needs your Google Cloud project) |
 | Android companion (Health Connect, pairing, sync, file export) | Builds (APK), unit-tested; **not yet run on a physical phone** (none attached to the build machine) |
 | Samsung Health Data SDK adapter | Written against public docs; **not compiled** — the SDK AAR requires your Samsung developer login |
-| Windows installer | Built (`VITALIS-Setup-0.1.0-x64.exe`); bundled Python/SQLCipher verified under Wine. **Installing and running it on real Windows has not been verified yet** — defined in CI (`.github/workflows/build.yml`) |
+| Windows installer | Built and tested in CI on Windows Server 2022: silent install, bundled engine, installed app through demo profile + every screen. **Not yet run by a person on a Windows 11 desktop** (unsigned → SmartScreen warning) |

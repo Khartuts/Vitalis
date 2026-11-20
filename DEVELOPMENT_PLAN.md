@@ -14,7 +14,7 @@ Legend: ✅ Implemented · 🧪 Tested (automated, in this environment) · 🌐 
 | 7 AI | Responses provider (API key + ChatGPT plan), local provider, SIWC OAuth, read-only tools, consent, evidence | ✅ 🧪 (mocks) · real services 🌐 |
 | 8 Reporting | Report builder, PDF (A4), CSV, JSON, all-data export, briefs | ✅ 🧪 |
 | 9 Security & tests | See SECURITY.md / TESTING.md | ✅ 🧪 |
-| 10 Packaging | Windows NSIS installer, Android debug + release APK, CI workflow | ✅ (installer built; Windows runtime numeric stack verification in CI 🌐) |
+| 10 Packaging | Windows NSIS installer, Android debug + release APK, CI workflow, GitHub Releases on `v*` tags | ✅ 🧪 (installer installed and driven on a Windows Server 2022 CI runner) |
 
 ## Feature checklist
 | Feature | Status | Notes |
@@ -49,8 +49,8 @@ Legend: ✅ Implemented · 🧪 Tested (automated, in this environment) · 🌐 
 | ECG / glucose analytics, GPS routes | ⏳ (by design not in v1) | |
 
 ## Next steps (in order)
-1. Push the repository to GitHub so `.github/workflows/build.yml` runs the engine tests on Windows and verifies the
-   bundled runtime + installer on a real Windows runner.
+1. ~~Push to GitHub and verify the installer on a real Windows runner~~ — done (run 44783780670). Remaining: a person
+   installs it on a Windows 11 desktop (interactive installer, SmartScreen, firewall prompt, real phone sync).
 2. Install the APK on the user's phone; run the hardware checklist in TESTING.md; update DATA_ACCESS_MATRIX.md 🔍.
 3. Download the Samsung SDK AAR; compile `src/samsung`; fix any API-name differences; test in developer mode.
 4. Connect real accounts (ChatGPT / API key / Google) and confirm request/response compatibility.
