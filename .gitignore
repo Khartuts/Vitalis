@@ -1,0 +1,27 @@
+node_modules/
+dist/
+dist-electron/
+out/
+release/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.vitalis.db*
+*.vitalis-backup
+build/
+.gradle/
+local.properties
+*.apk
+*.aab
+*.keystore
+!apps/android/debug-signing/README.md
+apps/android/app/libs/*.aar
+runtime/
+.DS_Store
+coverage/
+test-results/
+playwright-report/
+artifacts/
+# electron-builder resources (icon, installer license) must be tracked despite the generic build/ rule
+!apps/desktop/build/

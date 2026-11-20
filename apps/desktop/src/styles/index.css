@@ -1,0 +1,101 @@
+@import "tailwindcss";
+
+/* Theme tokens. Dark graphite is the default; light is selected explicitly (data-theme) or by OS preference.
+   Series colours were validated for CVD separation and ≥3:1 contrast on each mode's chart surface. */
+:root {
+  color-scheme: dark;
+  --bg: #0e1116;
+  --surface-1: #151a21;
+  --surface-2: #1b212a;
+  --surface-3: #232a35;
+  --border: #262e39;
+  --border-strong: #354050;
+  --text-primary: #e8ebf0;
+  --text-secondary: #a9b1bd;
+  --text-muted: #7c8592;
+  --accent: #14a294;
+  --accent-ink: #5fd3c4;
+  --series-1: #14a294; /* teal */
+  --series-2: #3987e5; /* blue */
+  --series-3: #c98500; /* amber */
+  --series-4: #9085e9; /* violet */
+  --series-5: #e66767; /* red */
+  --stage-deep: #3987e5;
+  --stage-light: #14a294;
+  --stage-rem: #9085e9;
+  --stage-awake: #c98500;
+  --good: #0ca30c;
+  --warning: #fab219;
+  --serious: #ec835a;
+  --critical: #d03b3b;
+  --grid: #222934;
+  --band: rgba(57, 135, 229, 0.12);
+  --focus: #5fd3c4;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    color-scheme: light;
+    --bg: #f3f4f6; --surface-1: #fbfbfa; --surface-2: #f0f1f3; --surface-3: #e6e8ec; --border: #dfe2e6;
+    --border-strong: #c9ced6; --text-primary: #111418; --text-secondary: #4a525d; --text-muted: #6b7380;
+    --accent: #0b8f80; --accent-ink: #087266; --series-1: #0b8f80; --series-2: #2a78d6; --series-3: #b87900;
+    --series-4: #6250d6; --series-5: #e34948; --stage-deep: #2a78d6; --stage-light: #0b8f80; --stage-rem: #6250d6;
+    --stage-awake: #b87900; --grid: #e8eaee; --band: rgba(42, 120, 214, 0.10); --focus: #087266;
+  }
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f3f4f6; --surface-1: #fbfbfa; --surface-2: #f0f1f3; --surface-3: #e6e8ec; --border: #dfe2e6;
+  --border-strong: #c9ced6; --text-primary: #111418; --text-secondary: #4a525d; --text-muted: #6b7380;
+  --accent: #0b8f80; --accent-ink: #087266; --series-1: #0b8f80; --series-2: #2a78d6; --series-3: #b87900;
+  --series-4: #6250d6; --series-5: #e34948; --stage-deep: #2a78d6; --stage-light: #0b8f80; --stage-rem: #6250d6;
+  --stage-awake: #b87900; --grid: #e8eaee; --band: rgba(42, 120, 214, 0.10); --focus: #087266;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-s1: var(--surface-1);
+  --color-s2: var(--surface-2);
+  --color-s3: var(--surface-3);
+  --color-line: var(--border);
+  --color-line-strong: var(--border-strong);
+  --color-fg: var(--text-primary);
+  --color-fg2: var(--text-secondary);
+  --color-muted: var(--text-muted);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-good: var(--good);
+  --color-warning: var(--warning);
+  --color-serious: var(--serious);
+  --color-critical: var(--critical);
+  --font-sans: "Inter", "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "Cascadia Mono", "Consolas", ui-monospace, monospace;
+}
+
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "tnum" 1, "cv11" 1;
+}
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 6px; }
+::selection { background: color-mix(in oklab, var(--accent) 35%, transparent); }
+* { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
+.num { font-variant-numeric: tabular-nums; }
+.fade-in { animation: fade 180ms ease-out; }
+@keyframes fade { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .fade-in { animation: none; } }
+.skeleton { background: linear-gradient(90deg, var(--surface-2), var(--surface-3), var(--surface-2)); background-size: 200% 100%;
+  animation: shimmer 1.2s infinite; border-radius: 8px; }
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+.prose-ai p { margin: 0.4em 0; }
+.prose-ai h3, .prose-ai h4 { font-weight: 600; margin: 0.8em 0 0.2em; font-size: 0.95rem; }
+.prose-ai ul { list-style: disc; padding-left: 1.2em; margin: 0.3em 0; }
+.prose-ai code { font-family: var(--font-mono); font-size: 0.85em; background: var(--surface-3); padding: 0 4px; border-radius: 4px; }
+
+@media print {
+  body { background: white; color: black; }
+}

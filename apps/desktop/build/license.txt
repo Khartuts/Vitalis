@@ -1,0 +1,11 @@
+VITALIS — Personal AI Health Intelligence
+
+VITALIS is personal wellness software. It is NOT a medical device and does not diagnose, treat or prevent any
+disease. Wearable measurements and VITALIS estimates can be inaccurate. Consult a qualified healthcare
+professional about health concerns.
+
+Your data stays on this computer in an encrypted database. Optional cloud features (AI providers, Google Health)
+only run after you connect them, and every AI request is shown to you before it is sent.
+
+Third-party components are distributed under their own licenses (see resources/engine/python/LICENSE.txt and
+the licenses of the bundled Python packages and Electron/Chromium).

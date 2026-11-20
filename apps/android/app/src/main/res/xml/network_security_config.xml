@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- No cleartext traffic. The desktop's self-signed certificate is accepted only by explicit SHA-256 pinning in code. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+</network-security-config>
