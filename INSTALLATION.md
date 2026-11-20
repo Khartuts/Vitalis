@@ -22,6 +22,24 @@ Verify a download (PowerShell): `Get-FileHash .\VITALIS-Setup-0.1.0-x64.exe -Alg
 4. Your data is stored in `%APPDATA%\vitalis-desktop\profiles\` as an encrypted SQLCipher database. Its key is
    protected by Windows (DPAPI via Electron safeStorage) and never written to disk in plain text.
 
+### Without the installer (portable ZIP)
+`VITALIS-<version>-win-x64-portable.zip` contains the same app. Right-click → *Extract All…* to a folder you own
+(e.g. `C:\Users\<you>\VITALIS`), then run `VITALIS.exe` from it. Data goes to the same place as with the installer.
+To remove it, delete the folder (your profiles stay in `%APPDATA%\vitalis-desktop` until you delete them in the app).
+
+### "NSIS Error — Error launching installer"
+The installer could not open its own file when it started. The file on GitHub is intact (CI installs that same file
+on Windows), so the cause is how it is being opened on the PC:
+1. **Do not run it from inside the ZIP.** Workflow artifacts download as a `.zip`: right-click → *Extract All…*,
+   then run the extracted `.exe`.
+2. **Check the size and checksum.** The file must be about 204 MB; compare `Get-FileHash <file> -Algorithm SHA256`
+   with `SHA256SUMS.txt` on the release. If it differs, download it again.
+3. **Antivirus.** Unsigned installers are sometimes held or quarantined while being scanned. Look in *Windows
+   Security → Virus & threat protection → Protection history* (or your antivirus' quarantine), restore the file if it
+   was quarantined, then run it again from a normal folder such as Downloads or the Desktop.
+4. Right-click the file → *Properties*; if there is an **Unblock** box at the bottom, tick it → OK.
+5. Still failing: use the portable ZIP above.
+
 ### Code signing (recommended before sharing the installer)
 Unsigned installers trigger SmartScreen. To sign: obtain an Authenticode certificate (OV/EV or Azure Trusted
 Signing), set `win.signAndEditExecutable: true` and the certificate environment variables documented by

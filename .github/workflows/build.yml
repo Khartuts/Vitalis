@@ -69,10 +69,10 @@ jobs:
         run: |
           npm install --no-save playwright@1.63.0
           node tests/e2e/app.e2e.mjs
-      - name: Build NSIS installer
+      - name: Build NSIS installer and portable ZIP
         working-directory: apps/desktop
         shell: bash
-        run: npx electron-builder --win nsis --x64 --publish never
+        run: npx electron-builder --win --x64 --publish never
       - name: Silent install, smoke-test the installed engine, drive the installed app
         shell: pwsh
         env:
@@ -90,6 +90,19 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "installed engine smoke test failed" }
           node apps/desktop/tests/e2e/installed.e2e.mjs $app
           if ($LASTEXITCODE -ne 0) { throw "installed app test failed" }
+      - name: Unzip the portable build and drive it
+        shell: pwsh
+        env:
+          E2E_SHOTS: ${{ runner.temp }}\e2e-shots\portable
+        run: |
+          $ErrorActionPreference = "Stop"
+          $zip = Get-ChildItem apps/desktop/release/VITALIS-*-win-x64-portable.zip | Select-Object -First 1
+          $dest = Join-Path $env:RUNNER_TEMP "portable"
+          Expand-Archive -Path $zip.FullName -DestinationPath $dest
+          $app = Join-Path $dest "VITALIS.exe"
+          if (-not (Test-Path $app)) { Get-ChildItem $dest; throw "VITALIS.exe not at the top of the portable ZIP" }
+          node apps/desktop/tests/e2e/installed.e2e.mjs $app
+          if ($LASTEXITCODE -ne 0) { throw "portable app test failed" }
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -100,6 +113,11 @@ jobs:
         with:
           name: vitalis-windows-installer
           path: apps/desktop/release/*.exe
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vitalis-windows-portable
+          path: apps/desktop/release/*-portable.zip
           if-no-files-found: error
 
   android:
@@ -141,6 +159,7 @@ jobs:
         run: |
           mkdir -p out
           find dist -name "*.exe" -exec cp {} out/ \;
+          find dist -name "*-portable.zip" -exec cp {} out/ \;
           cp "$(find dist -name 'app-debug.apk' | head -1)" "out/VITALIS-Companion-${TAG}-debug.apk"
           cp "$(find dist -name 'app-release-unsigned.apk' | head -1)" "out/VITALIS-Companion-${TAG}-release-unsigned.apk"
           (cd out && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt)
@@ -154,6 +173,7 @@ jobs:
             VITALIS ${{ env.TAG }}
 
             * `VITALIS-Setup-*-x64.exe` — Windows 11 installer (unsigned: SmartScreen → More info → Run anyway).
+            * `VITALIS-*-win-x64-portable.zip` — the same app without an installer: extract the whole ZIP, run `VITALIS.exe`.
             * `VITALIS-Companion-*-debug.apk` — Android companion, debug-signed, sideloadable.
             * `VITALIS-Companion-*-release-unsigned.apk` — release build; sign it with your own key.
             * `SHA256SUMS.txt` — checksums.

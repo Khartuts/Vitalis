@@ -2,7 +2,7 @@
   "name": "vitalis-desktop",
   "productName": "VITALIS",
   "version": "0.1.0",
-  "description": "VITALIS \u2014 Personal AI Health Intelligence (local-first desktop app)",
+  "description": "VITALIS — Personal AI Health Intelligence (local-first desktop app)",
   "author": "VITALIS",
   "license": "UNLICENSED",
   "private": true,
@@ -60,7 +60,7 @@
   "build": {
     "appId": "app.vitalis.desktop",
     "productName": "VITALIS",
-    "copyright": "VITALIS \u2014 personal health intelligence",
+    "copyright": "VITALIS — personal health intelligence",
     "directories": {
       "output": "release",
       "buildResources": "build"
@@ -90,11 +90,17 @@
           "arch": [
             "x64"
           ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "build/icon.png",
       "signAndEditExecutable": false,
-      "artifactName": "VITALIS-Setup-${version}-x64.${ext}"
+      "artifactName": "VITALIS-${version}-win-x64-portable.${ext}"
     },
     "nsis": {
       "oneClick": false,
@@ -104,7 +110,8 @@
       "createStartMenuShortcut": true,
       "shortcutName": "VITALIS",
       "deleteAppDataOnUninstall": false,
-      "license": "build/license.txt"
+      "license": "build/license.txt",
+      "artifactName": "VITALIS-Setup-${version}-x64.${ext}"
     },
     "linux": {
       "target": [
