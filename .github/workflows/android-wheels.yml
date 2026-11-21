@@ -10,8 +10,9 @@ on:
   workflow_dispatch:
   workflow_call:
   push:
-    paths:
-      - "apps/android/python-wheels/**"
+    paths: # the wheels, the app and the engine it bundles
+      - "apps/android/**"
+      - "services/engine/vitalis_engine/**"
       - ".github/workflows/android-wheels.yml"
 
 permissions:
