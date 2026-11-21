@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Button, Modal } from "../components/ui";
 import { fmtFeature } from "../lib/format";
 import { useEngine, useGlobalRange } from "../lib/hooks";
+import { IS_ANDROID } from "../lib/platform";
 import { useUi } from "../lib/store";
 import { EXPLAIN, type ExplainId } from "./content";
 
@@ -72,11 +73,11 @@ function ExplainPanel({ id, onClose }: { id: ExplainId; onClose: () => void }) {
         )}
         <Section title="Limitations" items={e.limits} />
         {"algorithm" in e && <p className="text-xs text-muted">Method: {String(e.algorithm)} — details in ALGORITHMS.md.</p>}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
+        {!IS_ANDROID && <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
           <p className="max-w-[60ch] text-xs text-muted">"Ask the analyst" opens the AI analyst with a question about this. Nothing is sent until you
             have seen and approved the exact request.</p>
           <Button variant="primary" onClick={ask} testId="explain-ask"><MessageSquare size={13} />Ask the analyst about this</Button>
-        </div>
+        </div>}
       </div>
     </Modal>
   );

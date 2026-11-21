@@ -143,10 +143,10 @@ export function Tabs({ tabs, value, onChange, children }: { tabs: { id: string; 
   onChange: (v: string) => void; children: ReactNode }) {
   return (
     <TabsP.Root value={value} onValueChange={onChange}>
-      <TabsP.List className="mb-4 flex gap-1 border-b border-line" aria-label="Sections">
+      <TabsP.List className="mb-4 flex gap-1 overflow-x-auto border-b border-line" aria-label="Sections">
         {tabs.map((t) => (
           <TabsP.Trigger key={t.id} value={t.id}
-            className="-mb-px border-b-2 border-transparent px-3 py-2 text-[13px] text-fg2 hover:text-fg data-[state=active]:border-accent data-[state=active]:text-fg">
+            className="-mb-px shrink-0 whitespace-nowrap border-b-2 border-transparent px-3 py-2 text-[13px] text-fg2 hover:text-fg data-[state=active]:border-accent data-[state=active]:text-fg">
             {t.label}
           </TabsP.Trigger>
         ))}

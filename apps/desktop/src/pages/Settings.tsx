@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { IS_ANDROID } from "../lib/platform";
 import { ArrowDown, ArrowUp, CheckCircle2, ExternalLink, KeyRound, QrCode, ShieldCheck, Smartphone, Trash2, Upload } from "lucide-react";
 import { useState } from "react";
 import { useAiStatus } from "../components/AiPanel";
@@ -9,7 +10,15 @@ import { useEngine, useGlobalRange, useStatus } from "../lib/hooks";
 import { addDays, useUi } from "../lib/store";
 
 export default function Settings() {
-  const [tab, setTab] = useState("profile");
+  const [tab, setTab] = useState(IS_ANDROID ? "sources" : "profile");
+  if (IS_ANDROID) { // phone: the PC-only connections (LAN sync server, file imports, Google, AI keys) are not offered here
+    return (
+      <div data-testid="settings-page">
+        <PageHeader title="Data Sources & Settings" subtitle="Everything is stored on this phone, encrypted." />
+        <SourcesTab />
+      </div>
+    );
+  }
   return (
     <div data-testid="settings-page">
       <PageHeader title="Data Sources & Settings" subtitle="Everything is stored locally and encrypted. Connections are optional and can be revoked at any time." />

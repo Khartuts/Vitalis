@@ -207,6 +207,22 @@ await step("command palette and theme toggle", async () => {
 });
 
 let fp = null; let port = null; let code = null;
+await step("phone-width layout: bottom tabs, menu, single column", async () => {
+  await page.setViewportSize({ width: 412, height: 900 });
+  await page.getByTestId("tab-overview").click();
+  await page.getByTestId("card-recovery").waitFor({ timeout: 15000 });
+  assert.equal(await page.getByTestId("nav-overview").isVisible(), false, "desktop sidebar hidden on phones");
+  await shot("12-phone-overview");
+  await page.getByTestId("tab-sleep").click();
+  await page.getByTestId("sleep-lab").waitFor({ timeout: 15000 });
+  await shot("13-phone-sleep");
+  await page.getByTestId("mobile-menu").click();
+  await page.getByRole("dialog", { name: "All screens" }).getByText("Cardiovascular Health").first().click();
+  await page.getByTestId("cardio-page").waitFor({ timeout: 15000 });
+  await page.setViewportSize({ width: 1600, height: 1000 });
+  await page.getByTestId("nav-overview").click();
+});
+
 await step("create a real (empty) profile and enable phone sync", async () => {
   const r = await page.evaluate(() => window.vitalis.invoke("profiles:create", { name: "Test person", demo: false, timezone: "Europe/Zagreb", birthYear: 1985 }));
   assert.ok(r.ok, JSON.stringify(r));

@@ -9,6 +9,7 @@ import { Skeleton } from "./components/ui";
 import { invoke, onEngineEvent } from "./lib/bridge";
 import { useUi } from "./lib/store";
 import { Welcome } from "./pages/Welcome";
+import { IS_ANDROID, PHONE_ROUTES } from "./lib/platform";
 
 const Overview = lazy(() => import("./pages/Overview"));
 const SleepLab = lazy(() => import("./pages/SleepLab"));
@@ -80,15 +81,16 @@ export default function App() {
   if (profiles.isLoading) return <div className="p-10"><Skeleton h={300} /></div>;
   if (!profiles.data?.active) return <Welcome data={profiles.data} />;
 
+  const routes = IS_ANDROID ? ROUTES.filter((r) => PHONE_ROUTES.has(r.id)) : ROUTES;
   const id = hash.split("?")[0].replace(/^\//, "") || "overview";
-  const route = ROUTES.find((r) => r.id === id) ?? ROUTES[0];
+  const route = routes.find((r) => r.id === id) ?? routes[0];
   const Page = route.page;
   return (
     <>
-      <Layout routes={ROUTES} active={route.id} aside={<AiPanel />}>
+      <Layout routes={routes} active={route.id} aside={<AiPanel />}>
         <Suspense fallback={<Skeleton h={400} />}><Page /></Suspense>
       </Layout>
-      <CommandPalette routes={ROUTES} />
+      {!IS_ANDROID && <CommandPalette routes={routes} />}
       <EvidenceModal />
     </>
   );
