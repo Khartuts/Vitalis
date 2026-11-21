@@ -40,6 +40,9 @@ jobs:
           sparse-checkout: |
             server/pypi
             target
+      - name: Apply VITALIS patch to the build tool (see apps/android/python-wheels/chaquopy-build-wheel.patch)
+        working-directory: chaquopy
+        run: patch -p1 < "$GITHUB_WORKSPACE/apps/android/python-wheels/chaquopy-build-wheel.patch"
       - uses: actions/setup-python@v5
         with:
           python-version: |

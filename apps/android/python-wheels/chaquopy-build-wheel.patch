@@ -1,0 +1,13 @@
+--- a/server/pypi/build-wheel.py
++++ b/server/pypi/build-wheel.py
+@@ -493,7 +493,9 @@
+                 link_filename = re.sub(pattern, repl, filename)
+                 if link_filename in self.standard_libs:
+                     continue  # e.g. torch has libc10.so, which would become libc.so.
+-                if link_filename != filename:
++                # VITALIS: the 3.10.22 target ships libpython3.so and libpython3.10.so, which both map to
++                # libpython.so; keep the first link instead of failing.
++                if link_filename != filename and not os.path.lexists(f"{reqs_lib_dir}/{link_filename}"):
+                     run(f"ln -s {filename} {reqs_lib_dir}/{link_filename}")
+ 
+     # On Android, some libraries are incorporated into libc. Create empty .a files so we

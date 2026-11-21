@@ -14,6 +14,8 @@ They are built by `.github/workflows/android-wheels.yml` with Chaquopy's `build-
 
 * Python-for-Android comes from Maven Central (`com.chaquo.python:target`), SHA-1 checked against Maven's checksums.
 * `pydantic_core` is not an abi3 module, so the job writes a PyO3 config file describing Android CPython 3.10.
+* `chaquopy-build-wheel.patch`: Python-for-Android 3.10.22 ships both `libpython3.so` and `libpython3.10.so`; the
+  pinned tool maps both to the alias `libpython.so` and fails on the second. The patch keeps the first alias.
 * `sqlcipher3` is patched to drop its `conan` build requirement (which would build a desktop OpenSSL); it links the
   OpenSSL `libcrypto` that ships with Chaquopy's Python instead.
 
