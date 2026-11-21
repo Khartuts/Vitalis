@@ -45,7 +45,7 @@ export default function Trends() {
   return (
     <div data-testid="trends-page">
       <PageHeader title="Health Trends" subtitle="Explore any stored metric over time. Metrics with different units are drawn as separate, aligned charts (never two y-axes)." />
-      <Card title="Metric explorer" actions={<div className="flex items-center gap-2">
+      <Card explain="tr.explorer" title="Metric explorer" actions={<div className="flex items-center gap-2">
         <Select label="Smoothing" value={roll} onChange={setRoll} options={[{ value: "1", label: "Daily values" }, { value: "7", label: "7-day average" }, { value: "28", label: "28-day average" }]} />
       </div>}>
         <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -90,7 +90,7 @@ export default function Trends() {
       </Card>
       <div className="mt-4">
         <Grid cols={2}>
-          <Card title="Period comparison with uncertainty" subtitle={`Last ${n} days vs the ${n} days before (bootstrap 95% CI of the difference in means)`}
+          <Card explain="tr.periods" title="Period comparison with uncertainty" subtitle={`Last ${n} days vs the ${n} days before (bootstrap 95% CI of the difference in means)`}
             actions={<Select label="Metric to compare" value={cmpFeature} onChange={setCmpFeature} options={available.filter((c) => !c.key.startsWith("j:")).map((c) => ({ value: c.key, label: c.label }))} />}>
             {!cmp.data ? <Skeleton h={120} /> : (
               <div className="grid grid-cols-3 gap-3" data-testid="period-compare">
@@ -104,7 +104,7 @@ export default function Trends() {
             )}
             <Note>A difference "detected" here means the interval excludes zero for these days; it does not tell you why it changed.</Note>
           </Card>
-          <Card title="Long-term view" subtitle="Monthly means over the last year (open the 1 year range for daily detail)">
+          <Card explain="tr.longterm" title="Long-term view" subtitle="Monthly means over the last year (open the 1 year range for daily detail)">
             <MonthlyView end={range.end} feature={cmpFeature} />
           </Card>
         </Grid>

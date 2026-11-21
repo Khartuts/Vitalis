@@ -25,7 +25,7 @@ export default function Stress() {
     <div data-testid="stress-page">
       <PageHeader title="Stress & Nervous System" subtitle={sum.data.note} />
       <Grid cols={2}>
-        <Card title="Elevated heart rate at low movement" subtitle="Minutes per day · bars; your self-rated stress (1–10) shown in the chart below" actions={<Prov kind="calculated" />}>
+        <Card explain="st.arousal" title="Elevated heart rate at low movement" subtitle="Minutes per day · bars; your self-rated stress (1–10) shown in the chart below" actions={<Prov kind="calculated" />}>
           <Chart height={230} title="Elevated heart rate at low movement" zoom onClick={(p: any) => p?.name && setDay(p.name)}
             context={{ metrics: ["arousal_min", "j:stress"], start, end: range.end, title: "Physiological arousal vs reported stress" }}
             table={{ columns: ["Date", "Elevated min", "Self-rated stress"], rows: d.map((x) => [x.date, x.arousal_min == null ? null : Math.round(x.arousal_min), x["j:stress"]]) }}
@@ -34,7 +34,7 @@ export default function Stress() {
           <Chart height={120} title="Self-rated stress" option={(p) => ({ legend: { show: false }, xAxis: { type: "category", data: dates, axisLabel: { formatter: (v: string) => v.slice(5) } },
             yAxis: { type: "value", min: 1, max: 10, name: "stress" }, series: [{ type: "line", data: d.map((x) => x["j:stress"]), connectNulls: false, symbolSize: 6, lineStyle: { color: p.s4, width: 2 }, itemStyle: { color: p.s4 } }] })} />
         </Card>
-        <Card title={`Intraday timeline · ${fmtDate(sel, { weekday: "long", day: "numeric", month: "short" })}`} subtitle="15-minute blocks: heart rate, coloured by state" testId="stress-timeline">
+        <Card explain="st.timeline" title={`Intraday timeline · ${fmtDate(sel, { weekday: "long", day: "numeric", month: "short" })}`} subtitle="15-minute blocks: heart rate, coloured by state" testId="stress-timeline">
           {!tl.data ? <Skeleton h={260} /> : tl.data.status === "insufficient_data" ? <Empty title="Insufficient data">{tl.data.missing_inputs.join(", ")}</Empty> : (
             <>
               <Chart height={240} title="Heart-rate state timeline" option={(p) => {
@@ -54,7 +54,7 @@ export default function Stress() {
             </>
           )}
         </Card>
-        <Card title="Workday vs weekend" subtitle="Averages over the selected period">
+        <Card explain="st.weekday" title="Workday vs weekend" subtitle="Averages over the selected period">
           <table className="w-full text-xs"><thead className="text-muted"><tr><th className="text-left font-normal" /><th className="text-right font-normal">Weekdays</th><th className="text-right font-normal">Weekend</th></tr></thead>
             <tbody>{[["arousal_min", "Elevated HR at low movement (min)"], ["lowmove_hr_median", "Low-movement HR"], ["rhr", "Resting HR"], ["hrv_night_rmssd", "Overnight HRV"], ["j:stress", "Self-rated stress"], ["j:mood", "Mood"]].map(([k, l]) => (
               <tr key={k} className="border-t border-line"><td className="py-1.5 text-fg2">{l}</td><td className="num text-right">{fmtFeature(k, sum.data.weekday[k])}</td><td className="num text-right">{fmtFeature(k, sum.data.weekend[k])}</td></tr>))}</tbody></table>
@@ -63,7 +63,7 @@ export default function Stress() {
             <Stat label="Afternoon elevated (avg/day)" value={isNum(sum.data.morning_vs_afternoon.afternoon_elevated_min_avg) ? `${Math.round(sum.data.morning_vs_afternoon.afternoon_elevated_min_avg)} min` : "—"} sub={`12:00–18:00 · last ${sum.data.morning_vs_afternoon.days} days`} />
           </div>
         </Card>
-        <Card title="How you feel vs what your body shows" subtitle="Self-rated stress vs elevated HR minutes (same day)">
+        <Card explain="st.feel_vs_body" title="How you feel vs what your body shows" subtitle="Self-rated stress vs elevated HR minutes (same day)">
           {corr.r == null ? <Empty title="Not enough days with both values">{corr.explanation}</Empty> : (
             <>
               <div className="mb-2 flex items-center gap-3"><Stat label="Spearman ρ" value={corr.r.toFixed(2)} sub={`95% CI ${corr.ci[0].toFixed(2)} to ${corr.ci[1].toFixed(2)} · n = ${corr.n}`} />
@@ -77,7 +77,7 @@ export default function Stress() {
           )}
         </Card>
         <StressJournal date={range.end} />
-        <Card title="Suggestions" subtitle="General, low-risk ideas — not treatment">
+        <Card explain="st.suggestions" title="Suggestions" subtitle="General, low-risk ideas — not treatment">
           <ul className="list-disc space-y-1 pl-5 text-xs text-fg2">
             <li>Short movement breaks (5–10 min walk) during long sedentary blocks often lower heart rate afterwards — check your timeline after trying it.</li>
             <li>A few minutes of slow breathing (about 6 breaths per minute) is a simple relaxation exercise.</li>
@@ -109,7 +109,7 @@ function StressJournal({ date }: { date: string }) {
     </Field>
   );
   return (
-    <Card title={`Stress journal · ${fmtDate(date)}`} subtitle="Quick self-report (stored locally; private habits never go to cloud AI)">
+    <Card explain="st.journal" title={`Stress journal · ${fmtDate(date)}`} subtitle="Quick self-report (stored locally; private habits never go to cloud AI)">
       <div className="grid grid-cols-2 gap-3">
         {scale("stress", "Stress")}{scale("mood", "Mood")}{scale("energy", "Perceived energy")}{scale("sleepiness", "Sleepiness")}
         <Field label="Workload">

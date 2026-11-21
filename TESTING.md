@@ -8,9 +8,10 @@ listed as "not run" was run.
 
 | Suite | Command | Result |
 |---|---|---|
-| Engine (pytest) | `cd services/engine && .venv/bin/pytest -q` | **50 passed** (v0.1.1) |
-| Desktop unit (Vitest) | `cd apps/desktop && npx vitest run` | **13 passed** |
-| Desktop end-to-end (real Electron + Playwright, Xvfb) | `xvfb-run -a node tests/e2e/app.e2e.mjs` | **23/23 steps passed**, 0 console errors |
+| Engine (pytest) | `cd services/engine && .venv/bin/pytest -q` | **51 passed** (v0.2.0) |
+| Engine on the Android-compatible stack (Python 3.10, NumPy 1.23, pandas 2.1, SciPy 1.8, statsmodels 0.14, scikit-learn 1.3) | `PYTHONPATH=. python3.10 -m pytest` with `requirements.android-compat.txt` | **51 passed** (v0.2.0) |
+| Desktop unit (Vitest) | `cd apps/desktop && npx vitest run` | **17 passed** (v0.2.0) |
+| Desktop end-to-end (real Electron + Playwright, Xvfb) | `xvfb-run -a node tests/e2e/app.e2e.mjs` | **24/24 steps passed** (v0.2.0, incl. an Explain panel on every analysis screen), 0 console errors |
 | Android unit (JUnit) | `cd apps/android && ./gradlew :app:testDebugUnitTest` | **6 passed** (v0.1.1) |
 | Android lint | `./gradlew :app:lintDebug` | 0 errors (warnings: newer versions available; intentional custom TrustManager for pinning) |
 | Engine smoke (stdio protocol) | `python scripts/smoke_engine.py <python>` | passed with the dev interpreter |

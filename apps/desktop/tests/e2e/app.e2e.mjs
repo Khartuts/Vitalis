@@ -64,6 +64,22 @@ await step("overview cards show computed values", async () => {
   await page.getByTestId("card-insights").waitFor();
 });
 
+await step("Explain: built-in explanation with live data, then ask the analyst", async () => {
+  await page.getByTestId("explain-ov.recovery").click();
+  const panel = page.getByTestId("explain-panel");
+  await panel.waitFor({ timeout: 10000 });
+  assert.match(await panel.innerText(), /How it's calculated/i);
+  const yours = page.getByTestId("explain-your-data");
+  await yours.getByText(/days? with data/).first().waitFor({ timeout: 15000 });
+  assert.match(await yours.innerText(), /Resting heart rate/);
+  await shot("01b-explain");
+  await page.getByTestId("explain-ask").click();
+  await page.getByTestId("ai-panel").waitFor({ timeout: 10000 });
+  assert.match(await page.getByTestId("ai-input").inputValue(), /recovery estimate/);
+  await page.getByTestId("toggle-ai").click(); // close the side panel again
+  await page.getByTestId("ai-panel").waitFor({ state: "detached", timeout: 10000 });
+});
+
 const pages = ["sleep", "recovery", "stress", "cardio", "activity", "trends", "journal", "lab", "ai", "reports", "settings"];
 for (const p of pages) {
   await step(`screen: ${p}`, async () => {
@@ -75,6 +91,16 @@ for (const p of pages) {
     const errs = await page.locator('[role="alert"]').allInnerTexts();
     assert.deepEqual(errs.filter((e) => !/No data was retrieved/.test(e)), [], `alerts on ${p}: ${errs.join(" | ")}`);
     await shot(`02-${p}`);
+    const ex = page.locator('[data-testid^="explain-"]').filter({ hasText: "Explain" });
+    if (await ex.count()) { // every analysis screen: the first Explain panel opens and its data loads
+      await ex.first().click();
+      const panel = page.getByTestId("explain-panel");
+      await panel.waitFor({ timeout: 10000 });
+      await page.waitForTimeout(400);
+      assert.ok(!/Could not load/.test(await panel.innerText()), `Explain on ${p} failed to load its data`);
+      await page.keyboard.press("Escape");
+      await panel.waitFor({ state: "detached", timeout: 10000 });
+    }
   });
 }
 

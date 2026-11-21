@@ -84,7 +84,7 @@ def correlate(x: pd.Series, y: pd.Series, method: str = "spearman") -> dict:
         normal = (sps.shapiro(xv).pvalue > 0.01 and sps.shapiro(yv).pvalue > 0.01) if n <= 5000 else True
         out["assumption_note"] = None if normal else "Data look non-normal; Spearman is more appropriate."
     else:
-        r = float(sps.spearmanr(xv, yv).statistic)
+        r = float(sps.spearmanr(xv, yv)[0])  # [0]: also works with SciPy < 1.9 (Android build)
     ne = effective_n(xv, yv)
     ci = fisher_ci(r, ne, spearman=(method == "spearman"))
     p = _p_from_r(r, ne)

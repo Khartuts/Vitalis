@@ -62,7 +62,7 @@ function CheckIn({ date, setDate }: { date: string; setDate: (d: string) => void
   };
   if (!habits.data || !day.data) return <Skeleton h={400} />;
   return (
-    <Card title={<span className="flex items-center gap-2">
+    <Card explain="jr.checkin" title={<span className="flex items-center gap-2">
       <Button size="sm" variant="ghost" onClick={() => setDate(addDays(date, -1))} title="Previous day"><ChevronLeft size={14} /></Button>
       {fmtDate(date, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
       <Button size="sm" variant="ghost" onClick={() => setDate(addDays(date, 1))} title="Next day"><ChevronRight size={14} /></Button></span>}
@@ -143,7 +143,7 @@ function History({ end, onEdit }: { end: string; onEdit: (d: string) => void }) 
   const shown = habits.data.filter((h) => h.active && entries.data!.some((e) => e.habit_key === h.key));
   if (!shown.length) return <Empty title="No entries in the last 4 weeks">Use the daily check-in to start logging.</Empty>;
   return (
-    <Card title="Last 4 weeks" subtitle="Click a day to review or edit it">
+    <Card explain="jr.weeks" title="Last 4 weeks" subtitle="Click a day to review or edit it">
       <div className="overflow-auto">
         <table className="text-[11px]">
           <thead><tr><th className="sticky left-0 bg-s1 pr-3 text-left font-normal text-muted">Habit</th>
@@ -185,7 +185,7 @@ function Habits() {
           const list = habits.data!.filter((h) => h.category === c);
           if (!list.length) return null;
           return (
-            <Card key={c} title={c[0].toUpperCase() + c.slice(1)}>
+            <Card explain="jr.category" key={c} title={c[0].toUpperCase() + c.slice(1)}>
               <ul className="space-y-1.5">{list.map((h) => (
                 <li key={h.key} className="flex items-center gap-2 text-[13px]">
                   <span className={`flex-1 ${h.active ? "text-fg" : "text-muted line-through"}`}>{h.label}</span>

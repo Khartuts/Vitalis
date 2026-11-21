@@ -28,7 +28,7 @@ export default function Recovery() {
       <PageHeader title="Recovery" subtitle={<>The <b>Morning Recovery Estimate</b> (algorithm recovery.v1) compares last night's physiology with <i>your own</i> recent
         baseline. It is a relative index — 50 is your usual, about ±20 per robust standard deviation — not a medical percentage. Click a day to see why it changed.</>} />
       <Grid cols={2}>
-        <Card title="Recovery trend" subtitle={`${valid.length} of ${rows.length} days estimated; the rest lacked inputs or baseline`} actions={<Prov kind="estimated" />}>
+        <Card explain="rc.trend" title="Recovery trend" subtitle={`${valid.length} of ${rows.length} days estimated; the rest lacked inputs or baseline`} actions={<Prov kind="estimated" />}>
           <Chart height={260} title="Recovery trend" zoom context={ctx} onClick={(p: any) => p?.name && setDay(p.name)}
             table={{ columns: ["Date", "Index", "Category"], rows: rows.map((r) => [r.local_date, r.value == null ? null : Math.round(r.value), r.category]) }}
             option={(p) => ({
@@ -38,7 +38,7 @@ export default function Recovery() {
                 markLine: { silent: true, symbol: "none", data: [{ yAxis: 50 }], lineStyle: { color: p.muted, type: "dashed" }, label: { formatter: "your usual", color: p.muted } } }],
             })} />
         </Card>
-        <Card title={`Why: ${fmtDate(sel, { weekday: "long", day: "numeric", month: "long" })}`} subtitle="Contribution of each input (weight × personal z-score, capped)" testId="recovery-drivers">
+        <Card explain="rc.why" title={`Why: ${fmtDate(sel, { weekday: "long", day: "numeric", month: "long" })}`} subtitle="Contribution of each input (weight × personal z-score, capped)" testId="recovery-drivers">
           {!cur ? <Empty title="No estimate for this day" /> : cur.value == null ? (
             <div>
               <Badge tone="warning">{CATEGORY_LABEL.insufficient_data}</Badge>
@@ -71,7 +71,7 @@ export default function Recovery() {
             </>
           )}
         </Card>
-        <Card title={`Daily energy estimate · ${fmtDate(sel)}`} subtitle="Exploratory intraday model (energy.v1) — hand-set parameters, not validated" actions={<Prov kind="estimated" />} testId="energy-card">
+        <Card explain="rc.energy" title={`Daily energy estimate · ${fmtDate(sel)}`} subtitle="Exploratory intraday model (energy.v1) — hand-set parameters, not validated" actions={<Prov kind="estimated" />} testId="energy-card">
           {!energy.data ? <Skeleton h={200} /> : energy.data.status === "insufficient_data" ? (
             <Empty title="Insufficient data">Missing: {energy.data.missing_inputs.join(", ")}</Empty>
           ) : (
@@ -91,7 +91,7 @@ export default function Recovery() {
             </>
           )}
         </Card>
-        <Card title="Rest vs activity" subtitle="Sleep duration and cardio load, day by day (separate axes would mislead — shown as two aligned charts)">
+        <Card explain="rc.rest_activity" title="Rest vs activity" subtitle="Sleep duration and cardio load, day by day (separate axes would mislead — shown as two aligned charts)">
           {feats.data ? (
             <>
               <Chart height={120} title="Sleep" option={dailyLines(feats.data.dates, [{ name: "Asleep (h)", data: feats.data.series.sleep_tst_min.map((v) => v == null ? null : v / 60), color: getVar("--series-2") }])} />

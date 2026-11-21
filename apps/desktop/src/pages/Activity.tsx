@@ -31,13 +31,13 @@ export default function Activity() {
         <Stat label="Acute : chronic load" value={q.data.load.length ? (q.data.load.at(-1).acute_chronic_ratio?.toFixed(2) ?? "—") : "—"} sub="exploratory" />
       </div>
       <Grid cols={2}>
-        <Card title="Daily steps" subtitle="De-duplicated: one source per day (source priority in Settings)">
+        <Card explain="ac.steps" title="Daily steps" subtitle="De-duplicated: one source per day (source priority in Settings)">
           <Chart height={240} title="Daily steps" zoom context={ctx(["steps"], "Daily steps")} table={{ columns: ["Date", "Steps"], rows: d.map((x) => [x.date, x.steps == null ? null : Math.round(x.steps)]) }}
             option={(p) => ({ legend: { show: false }, xAxis: { type: "category", data: dates, axisLabel: { formatter: (v: string) => v.slice(5) } }, yAxis: { type: "value" },
               series: [{ type: "bar", data: d.map((x) => x.steps), barMaxWidth: 14, itemStyle: { color: p.s1, borderRadius: [4, 4, 0, 0] },
                 markLine: avg ? { silent: true, symbol: "none", data: [{ yAxis: avg }], lineStyle: { color: p.muted, type: "dashed" }, label: { formatter: "average", color: p.muted } } : undefined }] })} />
         </Card>
-        <Card title="Steps by hour" subtitle="Last 8 weeks · darker = more steps">
+        <Card explain="ac.hourly" title="Steps by hour" subtitle="Last 8 weeks · darker = more steps">
           {!heat.cells.length ? <Empty title="No hourly step data" /> : (
             <Chart height={240} title="Steps heatmap" testId="steps-heatmap" option={(p) => ({ legend: { show: false },
               tooltip: { trigger: "item", formatter: (x: any) => `${heat.days[x.value[1]]} ${x.value[0]}:00 — ${x.value[2]} steps` },
@@ -47,7 +47,7 @@ export default function Activity() {
               series: [{ type: "heatmap", data: heat.cells, itemStyle: { borderColor: p.surface, borderWidth: 1 } }] })} />
           )}
         </Card>
-        <Card title="Heart-rate zones per day" subtitle="Minutes in % of max HR (Edwards zones)">
+        <Card explain="ac.zones" title="Heart-rate zones per day" subtitle="Minutes in % of max HR (Edwards zones)">
           {d.some((x) => x.hr_z1_min != null) ? (
             <Chart height={240} title="HR zones" option={(p) => ({ legend: { data: ["Z1 50–60%", "Z2 60–70%", "Z3 70–80%", "Z4 80–90%", "Z5 90%+"] },
               tooltip: { valueFormatter: (v: any) => `${Math.round(v)} min` }, xAxis: { type: "category", data: dates, axisLabel: { formatter: (v: string) => v.slice(5) } }, yAxis: { type: "value", name: "min" },
@@ -55,7 +55,7 @@ export default function Activity() {
                 data: d.map((x) => x[`hr_z${z}_min`]), itemStyle: { color: ["#cde2fb", "#86b6ef", "#3987e5", "#1c5cab", "#0d366b"][i], borderColor: p.surface, borderWidth: 1 } })) })} />
           ) : <Empty title="Zones unavailable">Set your birth year or max HR in Settings.</Empty>}
         </Card>
-        <Card title="Training load" subtitle="7-day (acute) and 28-day (chronic) exponentially weighted TRIMP" actions={<Prov kind="estimated" />}>
+        <Card explain="ac.load" title="Training load" subtitle="7-day (acute) and 28-day (chronic) exponentially weighted TRIMP" actions={<Prov kind="estimated" />}>
           {q.data.load.length === 0 ? <Empty title="Insufficient data">Needs at least 14 days with heart-rate zone data in the last 28.</Empty> : (
             <Chart height={240} title="Training load" option={(p) => ({ legend: { data: ["Acute (7 d)", "Chronic (28 d)"] },
               xAxis: { type: "category", data: q.data.load.map((x: any) => x.date), axisLabel: { formatter: (v: string) => v.slice(5) } }, yAxis: { type: "value", name: "TRIMP" },
@@ -64,13 +64,13 @@ export default function Activity() {
           )}
           <Note>Training load is computed only from your heart-rate samples; days without heart-rate data count as zero. It is exploratory and not a guide for training decisions.</Note>
         </Card>
-        <Card title="Weekly distribution" subtitle="Average steps and total exercise minutes per week">
+        <Card explain="ac.weekly" title="Weekly distribution" subtitle="Average steps and total exercise minutes per week">
           <Chart height={220} title="Weekly steps" option={(p) => ({ legend: { show: false }, xAxis: { type: "category", data: q.data.weekly.map((w: any) => w.week.slice(5, 10)) }, yAxis: { type: "value", name: "steps/day" },
             series: [{ type: "bar", data: q.data.weekly.map((w: any) => w.steps), barMaxWidth: 22, itemStyle: { color: p.s1, borderRadius: [4, 4, 0, 0] } }] })} />
           <Chart height={140} title="Weekly exercise" option={(p) => ({ legend: { show: false }, xAxis: { type: "category", data: q.data.weekly.map((w: any) => w.week.slice(5, 10)) }, yAxis: { type: "value", name: "min" },
             series: [{ type: "bar", data: q.data.weekly.map((w: any) => w.exercise_min), barMaxWidth: 22, itemStyle: { color: p.s4, borderRadius: [4, 4, 0, 0] } }] })} />
         </Card>
-        <Card title="Activity vs sleep" subtitle="Steps vs the following night's sleep">
+        <Card explain="ac.vs_sleep" title="Activity vs sleep" subtitle="Steps vs the following night's sleep">
           {d.filter((x, i) => x.steps != null && d[i + 1]?.sleep_tst_min != null).length < 5 ? <Empty title="Not enough days" /> : (
             <Chart height={240} title="Activity vs sleep" option={(p) => ({ legend: { show: false }, tooltip: { trigger: "item", formatter: (x: any) => `${x.value[2]}: ${Math.round(x.value[0])} steps → ${(x.value[1] / 60).toFixed(1)} h` },
               xAxis: { type: "value", name: "steps" }, yAxis: { type: "value", name: "next night (min)", scale: true },
@@ -78,7 +78,7 @@ export default function Activity() {
                 data: d.map((x, i) => [x.steps, d[i + 1]?.sleep_tst_min, x.date]).filter((x) => x[0] != null && x[1] != null) }] })} />
           )}
         </Card>
-        <Card title="Exercise history" subtitle={`${q.data.sessions.length} sessions`}>
+        <Card explain="ac.history" title="Exercise history" subtitle={`${q.data.sessions.length} sessions`}>
           {q.data.sessions.length === 0 ? <Empty title="No exercise sessions" /> : (
             <div className="max-h-72 overflow-auto"><table className="w-full text-xs"><thead className="sticky top-0 bg-s1 text-muted"><tr>
               {["Date", "Type", "Duration", "Distance", "Active kcal", "Source"].map((h) => <th key={h} className="py-1 text-left font-normal">{h}</th>)}</tr></thead>

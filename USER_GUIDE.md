@@ -11,6 +11,13 @@ Create a **private profile** (stored only on this PC, encrypted) or a **demo pro
 3. Evening: **Habit Journal → Daily check-in** (Ctrl+J). Logging caffeine, alcohol, walks, stress and mood is what
    makes the Correlation Lab useful.
 
+## Explain buttons
+Every card on the analysis screens has an **Explain** button. It opens a built-in explanation that works offline:
+what the card shows, how it is calculated, how to read it and its limitations — plus **Your data**, which says how
+many days of each input you have and whether your personal baseline is still building (estimates such as recovery
+need about 14 nights). **Ask the analyst about this** opens the AI analyst with a question about the card; nothing is
+sent until you have seen and approved the exact request.
+
 ## Screens
 | Screen | What you get |
 |---|---|
@@ -40,7 +47,7 @@ Create a **private profile** (stored only on this PC, encrypted) or a **demo pro
 ## The AI analyst
 Choose a provider at the top of the panel. Ask questions such as "Why was my recovery worse this morning?" or "Is
 caffeine after 2 PM associated with worse sleep?". For cloud providers a dialog shows the exact data before each
-request; *Cancel* sends nothing. Click a chart's **Explain** button to ask about that chart. The analyst cannot
+request; *Cancel* sends nothing. Click a chart's **Ask AI** button to ask about that chart. The analyst cannot
 diagnose, change medication or see private habits.
 
 ## Keyboard shortcuts

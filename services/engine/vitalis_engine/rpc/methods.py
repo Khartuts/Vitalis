@@ -230,6 +230,40 @@ def baseline_get(engine: Engine, p: BaselineP):
     return baseline_for(engine.db, p.feature, p.d()).as_dict()
 
 
+class ExplainDataP(DayP):
+    features: list[str] = Field(default_factory=list, max_length=20)
+    scores: list[Literal["recovery", "load", "energy_summary", "arousal"]] = Field(default_factory=list, max_length=4)
+
+
+@method("explain.data", ExplainDataP)
+def explain_data(engine: Engine, p: ExplainDataP):
+    """'Your data' for an Explain panel: per metric, days with data (all / last 60 days) and the baseline status."""
+    db, d = engine.db, p.d()
+    since = (d - timedelta(days=59)).isoformat()
+    window, min_prov, min_stable = baseline_settings(db)
+    feats = []
+    for f in p.features:
+        if f not in FEATURE_INFO:
+            raise RpcError("invalid_params", f"unknown feature: {f}")
+        r = db.query_one("SELECT count(*) AS n, min(local_date) AS first, max(local_date) AS last,"
+                         " sum(CASE WHEN local_date BETWEEN ? AND ? THEN 1 ELSE 0 END) AS recent"
+                         " FROM daily_features WHERE feature=? AND value IS NOT NULL", (since, p.date, f))
+        b = baseline_for(db, f, d)
+        feats.append({"key": f, **feature_info(f), "days": r["n"], "recent_days": r["recent"] or 0,
+                      "first": r["first"], "last": r["last"],
+                      "baseline": {"status": b.status, "n": b.n, "median": b.median, "robust_sd": b.robust_sd}})
+    scs = []
+    for k in p.scores:
+        r = db.query_one("SELECT count(*) AS n, min(local_date) AS first, max(local_date) AS last,"
+                         " sum(CASE WHEN local_date BETWEEN ? AND ? THEN 1 ELSE 0 END) AS recent"
+                         " FROM scores WHERE kind=? AND value IS NOT NULL", (since, p.date, k))
+        cur = db.query_one("SELECT value, category, baseline_status FROM scores WHERE kind=? AND local_date=?", (k, p.date))
+        scs.append({"kind": k, "days": r["n"], "recent_days": r["recent"] or 0, "first": r["first"], "last": r["last"],
+                    "on_date": cur})
+    return {"date": p.date, "recent_window_days": 60, "features": feats, "scores": scs,
+            "baseline_settings": {"window_days": window, "min_provisional": min_prov, "min_stable": min_stable}}
+
+
 # ---------------------------------------------------------------------------------------------- overview
 KEY_FEATURES = ["sleep_tst_min", "sleep_efficiency", "rhr", "hrv_night_rmssd", "steps", "arousal_min", "trimp",
                 "spo2_night_mean", "resp_rate_night", "sleep_bedtime_min"]

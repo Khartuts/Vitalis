@@ -13,6 +13,7 @@ import { SiwcClient } from "../../electron/ai/siwc";
 import { EngineBridge, resolveEngineCommand } from "../../electron/engine";
 import { GoogleHealthClient } from "../../electron/google/health";
 import { insecureTestCipher, ProfileStore, Vault, type Cipher } from "../../electron/vault";
+import { EXPLAIN, type Explanation } from "../../src/explain/content";
 
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), "vit-unit-"));
 const engineDir = path.resolve(__dirname, "..", "..", "..", "..", "services", "engine");
@@ -73,6 +74,29 @@ describe("Engine command", () => {
   });
 });
 
+describe("Explain buttons", () => {
+  const pagesDir = path.resolve(__dirname, "..", "..", "src", "pages");
+  const pages = ["Overview", "SleepLab", "Recovery", "Stress", "Cardio", "Activity", "Trends", "Journal", "Lab", "Reports"];
+  const sources = pages.map((p) => fs.readFileSync(path.join(pagesDir, `${p}.tsx`), "utf8"));
+  it("every card on the analysis screens has an Explain entry", () => {
+    pages.forEach((p, i) => {
+      const cards = (sources[i].match(/<Card[\s>]/g) ?? []).length;
+      const explained = (sources[i].match(/\bexplain=/g) ?? []).length;
+      expect(cards, p).toBeGreaterThan(0);
+      expect(explained, `${p}: cards without Explain`).toBe(cards);
+    });
+  });
+  it("every entry is complete and used by a screen", () => {
+    const all = sources.join("\n");
+    for (const [id, e] of Object.entries(EXPLAIN) as [string, Explanation][]) {
+      expect(e.what.length, id).toBeGreaterThan(10);
+      expect(e.how.length && e.read.length && e.limits.length, id).toBeTruthy();
+      expect(e.ask.length, id).toBeGreaterThan(10);
+      expect(all.includes(`"${id}"`), `${id} is not used by any screen`).toBe(true);
+    }
+  });
+});
+
 describe("EngineBridge with the real Python engine", () => {
   let eng: EngineBridge;
   beforeAll(async () => {
@@ -85,6 +109,17 @@ describe("EngineBridge with the real Python engine", () => {
     expect(st.demo).toBe(true);
     await expect(eng.call("features.series", { start: "x" })).rejects.toMatchObject({ code: "invalid_params" });
     await expect(eng.call("no.such")).rejects.toMatchObject({ code: "method_not_found" });
+  });
+  it("Explain entries name only metrics the engine knows; explain.data answers", async () => {
+    const cat = await eng.call<any[]>("features.catalog");
+    const known = new Set(cat.map((c) => c.key));
+    for (const [id, e] of Object.entries(EXPLAIN) as [string, Explanation][]) {
+      for (const f of e.features ?? []) expect(known.has(f), `${id}: unknown feature ${f}`).toBe(true);
+    }
+    const r = await eng.call<any>("explain.data", { date: "2026-11-19", features: ["rhr", "sleep_tst_min"], scores: ["recovery"] });
+    expect(r.features.map((f: any) => f.key)).toEqual(["rhr", "sleep_tst_min"]);
+    expect(["insufficient", "provisional", "stable"]).toContain(r.features[0].baseline.status);
+    await expect(eng.call("explain.data", { date: "2026-11-19", features: ["nope"] })).rejects.toMatchObject({ code: "invalid_params" });
   });
   it("handles concurrent calls", async () => {
     const r = await Promise.all(Array.from({ length: 10 }, () => eng.call<any>("prefs.get")));

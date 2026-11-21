@@ -1,4 +1,6 @@
 import * as Dialog from "@radix-ui/react-dialog";
+import type { ExplainId } from "../explain/content";
+import { ExplainButton } from "../explain/ExplainButton";
 import * as SwitchP from "@radix-ui/react-switch";
 import * as TabsP from "@radix-ui/react-tabs";
 import * as Tooltip from "@radix-ui/react-tooltip";
@@ -9,11 +11,14 @@ export function cx(...c: (string | false | null | undefined)[]) {
   return c.filter(Boolean).join(" ");
 }
 
-export function Card({ title, subtitle, actions, children, className, onClick, testId }: {
+export function Card({ title, subtitle, actions, children, className, onClick, testId, explain }: {
   title?: ReactNode; subtitle?: ReactNode; actions?: ReactNode; children: ReactNode; className?: string;
   onClick?: () => void; testId?: string;
+  /** Adds an "Explain" button (built-in explanation + live data + ask the analyst). */
+  explain?: ExplainId;
 }) {
   const interactive = !!onClick;
+  if (explain) actions = <>{actions}<ExplainButton id={explain} /></>;
   return (
     <section data-testid={testId}
       className={cx("rounded-xl border border-line bg-s1 p-4 fade-in", interactive && "cursor-pointer hover:border-line-strong transition-colors", className)}

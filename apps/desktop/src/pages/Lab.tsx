@@ -58,7 +58,7 @@ function Ask() {
   const g = r.data?.group_comparison;
   return (
     <Grid cols={2}>
-      <Card title="Question">
+      <Card explain="lb.question" title="Question">
         <div className="mb-3 flex flex-wrap gap-1.5">{QUESTIONS.map((q, k) => (
           <button key={q.q} onClick={() => pick(k)} data-testid={`question-${k}`} className={`rounded-full border px-2.5 py-1 text-[11px] ${k === i ? "border-accent text-fg" : "border-line text-fg2 hover:text-fg"}`}>{q.q}</button>))}</div>
         <div className="grid grid-cols-2 gap-3">
@@ -71,7 +71,7 @@ function Ask() {
         </div>
         <Note>Period: {start} → {range.end} (at least 90 days). Overnight outcomes are compared with the habit logged the day before the night (lag {r.data?.lag_days ?? "…"} day).</Note>
       </Card>
-      <Card title="Answer from your data" testId="habit-result">
+      <Card explain="lb.answer" title="Answer from your data" testId="habit-result">
         {r.error ? <ErrorBox error={r.error} /> : !r.data ? <Skeleton h={220} /> : !g || g.verdict === "insufficient_data" ? (
           <Empty title="Insufficient data">{g?.explanation ?? "Log this habit for more days."} ({r.data.days_with_habit_logged} days logged, {r.data.days_with_outcome} with outcome)</Empty>
         ) : (
@@ -111,7 +111,7 @@ function Explore() {
   const r = useEngine<any>("stats.correlate", { x, y, start, end: range.end, method, ...(lag === "auto" ? {} : { lag: Number(lag) }) }, { enabled: !!range.status });
   return (
     <div className="space-y-4">
-      <Card title="Variables">
+      <Card explain="lb.variables" title="Variables">
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <Field label="X (exposure)"><select className={inputCls} value={x} onChange={(e) => setX(e.target.value)} data-testid="corr-x">{opts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field>
           <Field label="Y (outcome)"><select className={inputCls} value={y} onChange={(e) => setY(e.target.value)} data-testid="corr-y">{opts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field>
@@ -121,7 +121,7 @@ function Explore() {
       </Card>
       {r.error ? <ErrorBox error={r.error} /> : !r.data ? <Skeleton h={300} /> : (
         <Grid cols={2}>
-          <Card title="Scatter" subtitle={`${r.data.n} days with both values (${r.data.n_missing} missing) · lag ${r.data.lag_days}`} testId="corr-result">
+          <Card explain="lb.scatter" title="Scatter" subtitle={`${r.data.n} days with both values (${r.data.n_missing} missing) · lag ${r.data.lag_days}`} testId="corr-result">
             {r.data.r == null ? <Empty title="Insufficient data">{r.data.explanation}</Empty> : (
               <>
                 <div className="mb-2 flex flex-wrap items-center gap-3"><Stat label={method === "spearman" ? "Spearman ρ" : "Pearson r"} value={r.data.r.toFixed(2)} sub={`95% CI ${r.data.ci[0].toFixed(2)} to ${r.data.ci[1].toFixed(2)} · effective n ≈ ${r.data.n_effective}`} />
@@ -134,7 +134,7 @@ function Explore() {
               </>
             )}
           </Card>
-          <Card title="Lagged associations" subtitle="Correlation when Y is measured 0–3 days after X (bars: r, whiskers: 95% CI)">
+          <Card explain="lb.lagged" title="Lagged associations" subtitle="Correlation when Y is measured 0–3 days after X (bars: r, whiskers: 95% CI)">
             <Chart height={200} title="Lagged correlations" option={(p) => ({ legend: { show: false }, xAxis: { type: "category", data: r.data.lagged.map((l: any) => `lag ${l.lag_days}`) },
               yAxis: { type: "value", min: -1, max: 1 }, tooltip: { formatter: (v: any) => { const l = r.data.lagged[v[0].dataIndex]; return l.r == null ? "insufficient data" : `r ${l.r.toFixed(2)} [${l.ci[0].toFixed(2)}, ${l.ci[1].toFixed(2)}] n=${l.n}`; } },
               series: [{ type: "bar", barMaxWidth: 28, data: r.data.lagged.map((l: any) => l.r), itemStyle: { color: p.s2, borderRadius: 4 } },
@@ -158,7 +158,7 @@ function Discover() {
   const start = addDays(range.end, -Math.max(119, range.days - 1));
   const r = useEngine<any>("stats.scan", { start, end: range.end }, { enabled: !!range.status });
   return (
-    <Card title="Habit screen" subtitle={`Every active journal habit vs sleep, resting HR, HRV and arousal · ${start} → ${range.end}`}>
+    <Card explain="lb.screen" title="Habit screen" subtitle={`Every active journal habit vs sleep, resting HR, HRV and arousal · ${start} → ${range.end}`}>
       {r.error ? <ErrorBox error={r.error} /> : !r.data ? <Skeleton h={300} /> : (
         <>
           <div className="mb-3 rounded-lg border border-warning/40 bg-warning/10 p-2 text-xs text-fg">{r.data.warning}</div>
@@ -197,7 +197,7 @@ function Experiments() {
   };
   return (
     <Grid cols={2}>
-      <Card title="Design an experiment" subtitle="Voluntary, safe changes only (sleep timing, caffeine timing, walks, screens…)">
+      <Card explain="lb.design" title="Design an experiment" subtitle="Voluntary, safe changes only (sleep timing, caffeine timing, walks, screens…)">
         <div className="space-y-3">
           <Field label="Title"><input className={inputCls} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} maxLength={120} /></Field>
           <Field label="Hypothesis"><input className={inputCls} value={form.hypothesis} onChange={(e) => setForm({ ...form, hypothesis: e.target.value })} maxLength={500} /></Field>
@@ -222,7 +222,7 @@ function Experiments() {
           <Note>Randomized blocks assign 2-day blocks to "do it" or "don't" in balanced random order, which protects against time trends. Follow the schedule and log the habit daily.</Note>
         </div>
       </Card>
-      <Card title="Your experiments">
+      <Card explain="lb.experiments" title="Your experiments">
         {!list.data?.length ? <Empty title="No experiments yet" /> : (
           <ul className="space-y-2">{list.data.map((e) => (
             <li key={e.id} className="flex items-center gap-2 text-[13px]"><button className={`flex-1 text-left ${sel === e.id ? "text-accent-ink" : "text-fg"}`} onClick={() => setSel(e.id)}>{e.title}</button>

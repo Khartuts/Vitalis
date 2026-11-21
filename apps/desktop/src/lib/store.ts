@@ -43,7 +43,7 @@ export const useUi = create<UiState>()(
       setPalette: (paletteOpen) => set({ paletteOpen }),
       explain: (chartContext, question) => set({ chartContext, aiOpen: true,
         pendingQuestion: question ?? `Explain this change in ${chartContext.title ?? chartContext.metrics.join(", ")} between ${chartContext.start} and ${chartContext.end}.` }),
-      clearPending: () => set({ pendingQuestion: null }),
+      clearPending: () => set({ pendingQuestion: null, chartContext: null }), // the panel keeps its own copy
       showEvidence: (evidence) => set({ evidence }),
       setLocale: (locale) => set({ locale }),
     }),

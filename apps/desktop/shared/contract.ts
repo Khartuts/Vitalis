@@ -5,7 +5,7 @@ import { z } from "zod";
 /** Engine (Python) methods the renderer may call through `engine:call`. Methods that take filesystem paths,
  * raw keys or AI tool execution are deliberately excluded and are only reachable through main-mediated flows. */
 export const RENDERER_ENGINE_METHODS = [
-  "system.status", "prefs.get", "prefs.set", "features.catalog", "features.series", "features.day", "baseline.get",
+  "system.status", "prefs.get", "prefs.set", "features.catalog", "features.series", "features.day", "baseline.get", "explain.data",
   "overview.get", "sleep.nights", "sleep.consistency", "sleep.planner", "sleep.plan_save", "sleep.adherence",
   "recovery.range", "load.range", "energy.day", "stress.timeline", "stress.summary", "cardio.summary",
   "activity.summary", "compare.periods", "stats.correlate", "stats.habit", "stats.scan", "journal.habits",

@@ -1,4 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
+import type { ExplainId } from "../explain/content";
 import { useMemo, useState } from "react";
 import { Chart, dailyLines, type Palette } from "../components/Chart";
 import { Badge, Button, Card, Empty, ErrorBox, Field, Grid, inputCls, Note, PageHeader, Prov, Skeleton, Stat, TabPanel, Tabs } from "../components/ui";
@@ -14,6 +15,9 @@ function rolling(v: (number | null)[], n: number) {
     return w.length >= Math.ceil(n / 2) ? w.reduce((a, b) => a + b, 0) / w.length : null;
   });
 }
+
+const VITALS_EXPLAIN: Record<string, ExplainId> = { hr_sleep_mean: "sl.vitals.hr", spo2_night_mean: "sl.vitals.spo2",
+  resp_rate_night: "sl.vitals.resp", skin_temp_delta_night: "sl.vitals.skin" };
 
 export default function SleepLab() {
   const range = useGlobalRange();
@@ -48,7 +52,7 @@ export default function SleepLab() {
         { id: "vitals", label: "Overnight vitals" }, { id: "planner", label: "Sleep Planner" }]}>
         <TabPanel value="nights">
           <Grid cols={2}>
-            <Card title="Total sleep time" subtitle={`Bars: nightly · line: 7-night average · dashed: your sleep need (${fmtDuration(need)})`}>
+            <Card explain="sl.tst" title="Total sleep time" subtitle={`Bars: nightly · line: 7-night average · dashed: your sleep need (${fmtDuration(need)})`}>
               <Chart height={260} title="Total sleep time" zoom context={ctx(["sleep_tst_min"], "Total sleep time")}
                 table={{ columns: ["Night", "Asleep (min)"], rows: nights.map((n) => [n.date, n.sleep_tst_min == null ? null : Math.round(n.sleep_tst_min)]) }}
                 option={(p) => ({
@@ -61,24 +65,24 @@ export default function SleepLab() {
                     { name: "7-night average", type: "line", data: rolling(col("sleep_tst_min"), 7), showSymbol: false, lineStyle: { color: p.s1, width: 2 }, itemStyle: { color: p.s1 } }],
                 })} />
             </Card>
-            <Card title="Sleep efficiency" subtitle="Asleep ÷ time in bed (needs stages)">
+            <Card explain="sl.efficiency" title="Sleep efficiency" subtitle="Asleep ÷ time in bed (needs stages)">
               <Chart height={260} title="Sleep efficiency" zoom context={ctx(["sleep_efficiency"], "Sleep efficiency")}
                 option={dailyLines(dates, [{ name: "Efficiency", data: col("sleep_efficiency"), color: getVar("--series-1") }],
                   { formatter: (v) => `${v.toFixed(0)}%` })} />
             </Card>
             {col("sleep_score_imported").some((v) => v != null) && (
-              <Card title="Sleep score history" subtitle="Samsung Health's proprietary score, imported verbatim" actions={<Prov kind="imported" />}>
+              <Card explain="sl.score" title="Sleep score history" subtitle="Samsung Health's proprietary score, imported verbatim" actions={<Prov kind="imported" />}>
                 <Chart height={220} title="Sleep score" option={dailyLines(dates, [{ name: "Sleep score", data: col("sleep_score_imported"), color: getVar("--series-4") }])} />
               </Card>
             )}
-            <Card title="Sleep debt trend" subtitle="Assumption-based estimate" actions={<Prov kind="estimated" />}>
+            <Card explain="sl.debt" title="Sleep debt trend" subtitle="Assumption-based estimate" actions={<Prov kind="estimated" />}>
               <Chart height={220} title="Sleep debt" context={ctx(["sleep_debt_min"], "Sleep debt")}
                 option={dailyLines(dates, [{ name: "Sleep debt", data: col("sleep_debt_min"), color: getVar("--series-3"), area: true }], { formatter: (v) => fmtDuration(v), min: 0 })} />
               <Note>Assumptions: sleep need {fmtDuration(q.data.debt_assumptions.need_min)} (change in Settings); each night adds (need − sleep);
                 debt decays by 15 % per night; nights without data add nothing. This is an illustration of accumulated shortfall, not a physiological measurement.</Note>
             </Card>
           </Grid>
-          <Card title="Nights" className="mt-4">
+          <Card explain="sl.nights" title="Nights" className="mt-4">
             <div className="max-h-[420px] overflow-auto">
               <table className="w-full text-xs">
                 <thead className="sticky top-0 bg-s1 text-muted"><tr>{["Night", "Bed", "Wake", "Asleep", "Efficiency", "Latency", "WASO", "Awakenings", "Deep", "REM", "Nap"].map((h) =>
@@ -109,7 +113,7 @@ export default function SleepLab() {
           <Grid cols={2}>
             {[["hr_sleep_mean", "Mean heart rate during sleep", "--series-2"], ["spo2_night_mean", "Overnight SpO2 (mean)", "--series-1"],
               ["resp_rate_night", "Overnight respiratory rate", "--series-4"], ["skin_temp_delta_night", "Skin temperature deviation (source baseline)", "--series-3"]].map(([k, t, c]) => (
-              <Card key={k} title={t} subtitle={q.data.info[k]?.unit}>
+              <Card key={k} title={t} subtitle={q.data.info[k]?.unit} explain={VITALS_EXPLAIN[k]}>
                 {col(k).some((v) => v != null) ? <Chart height={200} title={t} context={ctx([k], t)} option={dailyLines(dates, [{ name: t, data: col(k), color: getVar(c) }])} />
                   : <Empty title="Not available from your sources">See Data Sources for what your phone shares.</Empty>}
               </Card>
@@ -135,7 +139,7 @@ function StagesTab({ data }: { data: any }) {
   const lanes = ["awake", "rem", "light", "deep"];
   return (
     <Grid cols={2}>
-      <Card title="Hypnogram" subtitle={ep ? `${fmtDate(ep.wake_date, { weekday: "long", day: "numeric", month: "long" })} · ${fmtDuration(ep.duration_min)}` : "No night selected"}
+      <Card explain="sl.hypnogram" title="Hypnogram" subtitle={ep ? `${fmtDate(ep.wake_date, { weekday: "long", day: "numeric", month: "long" })} · ${fmtDuration(ep.duration_min)}` : "No night selected"}
         actions={eps.length > 0 && <div className="flex gap-1"><Button size="sm" disabled={sel <= 0} onClick={() => setSel(sel - 1)}>‹</Button>
           <Button size="sm" disabled={sel >= eps.length - 1} onClick={() => setSel(sel + 1)}>›</Button></div>}>
         {!ep ? <Empty title="No recent nights" /> : !ep.has_stages ? <Empty title="This night has no stage data">The source supplied only a session start and end.</Empty> : (
@@ -160,7 +164,7 @@ function StagesTab({ data }: { data: any }) {
         )}
         <div className="mt-2 flex gap-3 text-[11px] text-fg2">{STAGES.map(([k, l]) => <span key={k} className="flex items-center gap-1"><i className="inline-block h-2 w-3 rounded-sm" style={{ background: getVar(`--stage-${k}`) }} />{l}</span>)}</div>
       </Card>
-      <Card title="Stage durations per night" subtitle="Minutes in each stage (legend + table view available)">
+      <Card explain="sl.stage_durations" title="Stage durations per night" subtitle="Minutes in each stage (legend + table view available)">
         {!nights.length ? <Empty title="No stage data" /> : (
           <Chart height={260} title="Stage durations" zoom
             table={{ columns: ["Night", "Deep", "Light", "REM", "Awake"], rows: nights.map((n) => [n.date, ...["sleep_deep_min", "sleep_light_min", "sleep_rem_min", "sleep_awake_min"].map((k) => n[k] == null ? null : Math.round(n[k]))]) }}
@@ -173,7 +177,7 @@ function StagesTab({ data }: { data: any }) {
             })} />
         )}
       </Card>
-      <Card title="Stage share" subtitle="Average percentage of time asleep">
+      <Card explain="sl.stage_share" title="Stage share" subtitle="Average percentage of time asleep">
         <div className="grid grid-cols-3 gap-3">
           {(["deep", "rem", "light"] as const).map((k) => {
             const v = nights.map((n) => n[`sleep_${k}_pct`]).filter(isNum);
@@ -203,7 +207,7 @@ function ConsistencyTab({ nights, cons }: { nights: any[]; cons: any }) {
   }, [nights, med]);
   return (
     <Grid cols={2}>
-      <Card title="Bedtime & wake time" subtitle="Clock time per night (one axis: minutes from midnight)">
+      <Card explain="sl.bed_wake" title="Bedtime & wake time" subtitle="Clock time per night (one axis: minutes from midnight)">
         <Chart height={260} title="Bedtime and wake time" zoom option={(p) => ({
           legend: { data: ["Bedtime", "Wake time"] },
           xAxis: { type: "category", data: nights.map((n) => n.date), axisLabel: { formatter: (v: string) => v.slice(5) } },
@@ -212,7 +216,7 @@ function ConsistencyTab({ nights, cons }: { nights: any[]; cons: any }) {
           series: [{ name: "Bedtime", type: "scatter", symbolSize: 8, data: nights.map((n) => n.sleep_bedtime_min), itemStyle: { color: p.s2 } },
             { name: "Wake time", type: "scatter", symbolSize: 8, data: nights.map((n) => n.sleep_wake_min), itemStyle: { color: p.s3 } }] })} />
       </Card>
-      <Card title="Bedtime consistency heatmap" subtitle={`Minutes away from your median bedtime (${fmtClock(med)}) · darker = less consistent`}>
+      <Card explain="sl.heatmap" title="Bedtime consistency heatmap" subtitle={`Minutes away from your median bedtime (${fmtClock(med)}) · darker = less consistent`}>
         {!heat.cells.length ? <Empty title="Not enough nights" /> : (
           <Chart height={260} title="Bedtime consistency" testId="bedtime-heatmap" option={(p) => ({
             tooltip: { trigger: "item", formatter: (x: any) => `Week of ${heat.weeks[x.value[0]]}, ${["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][x.value[1]]}: ${x.value[2]} min off` },
@@ -224,13 +228,13 @@ function ConsistencyTab({ nights, cons }: { nights: any[]; cons: any }) {
             series: [{ type: "heatmap", data: heat.cells, itemStyle: { borderColor: p.surface, borderWidth: 2, borderRadius: 3 } }] })} />
         )}
       </Card>
-      <Card title="Weekday vs weekend" subtitle={cons?.note}>
+      <Card explain="sl.weekday" title="Weekday vs weekend" subtitle={cons?.note}>
         <table className="w-full text-xs"><thead className="text-muted"><tr><th className="text-left font-normal">Median</th><th className="text-right font-normal">Weekdays</th><th className="text-right font-normal">Weekend</th></tr></thead>
           <tbody>{[["sleep_bedtime_min", "Bedtime"], ["sleep_wake_min", "Wake"], ["sleep_midpoint_min", "Midpoint"], ["sleep_tst_min", "Asleep"]].map(([k, l]) => (
             <tr key={k} className="border-t border-line"><td className="py-1.5 text-fg2">{l}</td>
               <td className="num text-right">{fmtFeature(k, cons?.weekday?.[k], "min")}</td><td className="num text-right">{fmtFeature(k, cons?.weekend?.[k], "min")}</td></tr>))}</tbody></table>
       </Card>
-      <Card title="Sleep Regularity Index" subtitle="Probability of being in the same state (asleep/awake) 24 h apart, scaled −100…100 (14-night window)">
+      <Card explain="sl.sri" title="Sleep Regularity Index" subtitle="Probability of being in the same state (asleep/awake) 24 h apart, scaled −100…100 (14-night window)">
         <Chart height={200} title="Sleep regularity" option={dailyLines(nights.map((n) => n.date), [{ name: "SRI", data: nights.map((n) => n.sleep_sri_14d), color: getVar("--series-1") }])} />
       </Card>
     </Grid>
@@ -243,14 +247,14 @@ function DistributionTab({ nights, need }: { nights: any[]; need: number }) {
   const counts = bins.map((b) => v.filter((x) => x >= b && x < b + 30).length);
   return (
     <Grid cols={2}>
-      <Card title="Sleep duration distribution" subtitle={`${v.length} nights · 30-minute bins`}>
+      <Card explain="sl.distribution" title="Sleep duration distribution" subtitle={`${v.length} nights · 30-minute bins`}>
         <Chart height={260} title="Sleep duration distribution" table={{ columns: ["Bin", "Nights"], rows: bins.map((b, i) => [`${fmtDuration(b)}–${fmtDuration(b + 30)}`, counts[i]]) }}
           option={(p) => ({ tooltip: { trigger: "axis" }, legend: { show: false },
             xAxis: { type: "category", data: bins.map((b) => `${(b / 60).toFixed(1)}h`) }, yAxis: { type: "value", minInterval: 1 },
             series: [{ type: "bar", data: counts.map((c, i) => ({ value: c, itemStyle: { color: bins[i] + 15 < need ? p.s3 : p.s2, borderRadius: [4, 4, 0, 0] } })), barCategoryGap: "8%" }] })} />
         <Note>Amber bars are below your configured sleep need ({fmtDuration(need)}).</Note>
       </Card>
-      <Card title="Rolling averages" subtitle="7- and 30-night rolling mean of total sleep">
+      <Card explain="sl.rolling" title="Rolling averages" subtitle="7- and 30-night rolling mean of total sleep">
         <Chart height={260} title="Rolling sleep averages" option={dailyLines(nights.map((n) => n.date), [
           { name: "7-night", data: rolling(nights.map((n) => n.sleep_tst_min), 7), color: getVar("--series-2") },
           { name: "30-night", data: rolling(nights.map((n) => n.sleep_tst_min), 30), color: getVar("--series-3") }], { formatter: (x) => fmtDuration(x) })} />
@@ -265,14 +269,14 @@ function SleepRecovery({ nights, rec }: { nights: any[]; rec: any[] }) {
   const pts2 = nights.filter((n) => n.sleep_tst_min != null && n.rhr != null).map((n) => [n.sleep_tst_min / 60, n.rhr, n.date]);
   return (
     <Grid cols={2}>
-      <Card title="Sleep duration vs morning recovery" subtitle={`${pts.length} mornings · recovery uses sleep as one input, so some relationship is expected by construction`}>
+      <Card explain="sl.vs_recovery" title="Sleep duration vs morning recovery" subtitle={`${pts.length} mornings · recovery uses sleep as one input, so some relationship is expected by construction`}>
         {pts.length < 5 ? <Empty title="Not enough mornings with both values" /> : (
           <Chart height={260} title="Sleep vs recovery" option={(p) => ({ tooltip: { trigger: "item", formatter: (x: any) => `${x.value[2]}: ${x.value[0].toFixed(1)} h → ${Math.round(x.value[1])}` },
             legend: { show: false }, xAxis: { type: "value", name: "hours asleep", scale: true }, yAxis: { type: "value", name: "recovery index", min: 0, max: 100 },
             series: [{ type: "scatter", data: pts, symbolSize: 9, itemStyle: { color: p.s1, borderColor: p.surface, borderWidth: 2 } }] })} />
         )}
       </Card>
-      <Card title="Sleep duration vs overnight resting HR">
+      <Card explain="sl.vs_rhr" title="Sleep duration vs overnight resting HR">
         {pts2.length < 5 ? <Empty title="Not enough nights" /> : (
           <Chart height={260} title="Sleep vs resting HR" option={(p) => ({ tooltip: { trigger: "item", formatter: (x: any) => `${x.value[2]}: ${x.value[0].toFixed(1)} h, ${Math.round(x.value[1])} bpm` },
             legend: { show: false }, xAxis: { type: "value", name: "hours asleep", scale: true }, yAxis: { type: "value", name: "bpm", scale: true },
@@ -297,7 +301,7 @@ function Planner() {
   };
   return (
     <Grid cols={2}>
-      <Card title="Plan your bedtime" subtitle="Based on your recent sleep efficiency and your sleep need">
+      <Card explain="sl.planner" title="Plan your bedtime" subtitle="Based on your recent sleep efficiency and your sleep need">
         <div className="grid grid-cols-2 gap-3">
           <Field label="Desired wake time"><input type="time" className={inputCls} value={wake} onChange={(e) => setWake(e.target.value)} data-testid="planner-wake" /></Field>
           <Field label="Sleep need (hours)" hint="Blank = your setting"><input className={inputCls} inputMode="decimal" value={need} onChange={(e) => setNeed(e.target.value.replace(/[^\d.]/g, ""))} /></Field>
@@ -315,7 +319,7 @@ function Planner() {
         <div className="mt-3"><Button variant="primary" onClick={save} disabled={!plan.data}>Start this plan tomorrow</Button></div>
         {plan.data && <Note>{plan.data.assumptions.join(" ")}</Note>}
       </Card>
-      <Card title="Plan adherence" subtitle="Bedtime within the window ±15 min and wake within ±30 min of target">
+      <Card explain="sl.adherence" title="Plan adherence" subtitle="Bedtime within the window ±15 min and wake within ±30 min of target">
         {!adh.data?.plan ? <Empty title="No active plan" /> : (
           <>
             <div className="mb-3 flex gap-6"><Stat label="Adherence" value={adh.data.adherence_rate == null ? "—" : `${Math.round(adh.data.adherence_rate * 100)}%`} sub={`${adh.data.nights_rated} nights rated`} />

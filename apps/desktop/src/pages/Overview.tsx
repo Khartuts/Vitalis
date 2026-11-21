@@ -7,6 +7,7 @@ import { Chart, dailyLines, type Palette } from "../components/Chart";
 import { Badge, Button, Card, Empty, ErrorBox, PageHeader, Prov, Select, Skeleton, Stat } from "../components/ui";
 import { engine } from "../lib/bridge";
 import { CATEGORY_LABEL, fmtDelta, fmtDuration, fmtFeature, isNum, zLabel } from "../lib/format";
+import type { ExplainId } from "../explain/content";
 import { useEngine, useGlobalRange } from "../lib/hooks";
 
 const CARDS = ["recovery", "sleep", "rhr", "hrv", "stress", "energy", "activity", "baseline", "change", "insights", "quality", "periods"] as const;
@@ -96,7 +97,7 @@ function RecoveryCard({ d }: { d: any }) {
   const r = d.recovery;
   const used = r?.detail?.inputs_used ?? [];
   return (
-    <Card title="Morning recovery estimate" subtitle="Relative index · 50 = your usual" onClick={() => navigate("recovery")} testId="card-recovery"
+    <Card explain="ov.recovery" title="Morning recovery estimate" subtitle="Relative index · 50 = your usual" onClick={() => navigate("recovery")} testId="card-recovery"
       actions={<Prov kind="estimated" />}>
       {!r || r.value == null ? (
         <Empty title="Insufficient data">{r?.detail?.reason ?? "Needs overnight HRV or resting HR with a baseline, plus sleep duration."}</Empty>
@@ -125,7 +126,7 @@ function SleepCard({ d }: { d: any }) {
   const s = d.sleep_today ?? {};
   const total = (s.sleep_deep_min ?? 0) + (s.sleep_rem_min ?? 0);
   return (
-    <Card title="Last night's sleep" onClick={() => navigate("sleep")} testId="card-sleep" actions={<Prov kind="measured" />}>
+    <Card explain="ov.sleep" title="Last night's sleep" onClick={() => navigate("sleep")} testId="card-sleep" actions={<Prov kind="measured" />}>
       {!isNum(s.sleep_tst_min) ? <Empty title="No main sleep recorded for this night" /> : (
         <div className="grid grid-cols-3 gap-3">
           <Stat label="Asleep" value={fmtDuration(s.sleep_tst_min)} testId="sleep-tst" />
@@ -155,12 +156,14 @@ function MiniTrend({ values, dates, color, bar }: { values: (number | null)[]; d
   );
 }
 
+const TREND_EXPLAIN: Record<string, ExplainId> = { rhr: "ov.rhr", hrv_night_rmssd: "ov.hrv", arousal_min: "ov.arousal" };
+
 function TrendCard({ title, feature, d, comp, color, to, bar, emptyNote }: { title: string; feature: string; d: any; comp: any;
   color: keyof Palette; to: string; bar?: boolean; emptyNote?: string }) {
   const trend = d.trends?.[feature] ?? [];
   const has = trend.some((t: any) => t.value != null);
   return (
-    <Card title={title} onClick={() => navigate(to)} testId={`card-${feature}`}>
+    <Card title={title} onClick={() => navigate(to)} testId={`card-${feature}`} explain={TREND_EXPLAIN[feature]}>
       {!has ? <Empty title="Not available">{emptyNote}</Empty> : (
         <>
           <div className="flex items-end justify-between">
@@ -178,7 +181,7 @@ function TrendCard({ title, feature, d, comp, color, to, bar, emptyNote }: { tit
 function EnergyCard({ d }: { d: any }) {
   const e = d.energy;
   return (
-    <Card title="Daily energy estimate" subtitle="Exploratory model · not validated" onClick={() => navigate("recovery")} testId="card-energy" actions={<Prov kind="estimated" />}>
+    <Card explain="ov.energy" title="Daily energy estimate" subtitle="Exploratory model · not validated" onClick={() => navigate("recovery")} testId="card-energy" actions={<Prov kind="estimated" />}>
       {e.status === "insufficient_data" ? <Empty title="Insufficient data">Missing: {(e.missing_inputs ?? []).join(", ")}</Empty> : (
         <>
           <div className="flex gap-6"><Stat label="At wake" value={Math.round(e.start_value)} /><Stat label="Now / end of day" value={Math.round(e.end_value)} /><Stat label="Lowest" value={Math.round(e.min_value)} /></div>
@@ -197,7 +200,7 @@ function ActivityCard({ d, comp }: { d: any; comp: any }) {
   const a = d.activity_today ?? {};
   const st = d.trends?.steps ?? [];
   return (
-    <Card title="Activity" onClick={() => navigate("activity")} testId="card-activity">
+    <Card explain="ov.activity" title="Activity" onClick={() => navigate("activity")} testId="card-activity">
       <div className="grid grid-cols-3 gap-3">
         <Stat label="Steps" value={fmtFeature("steps", a.steps, "count")} sub={comp.steps?.baseline?.median ? `usual ${Math.round(comp.steps.baseline.median).toLocaleString()}` : undefined} />
         <Stat label="Exercise" value={isNum(a.exercise_min) ? `${Math.round(a.exercise_min)} min` : "—"} />
@@ -210,7 +213,7 @@ function ActivityCard({ d, comp }: { d: any; comp: any }) {
 
 function BaselineCard({ d }: { d: any }) {
   return (
-    <Card title="Today vs your baseline" subtitle="Robust median of the previous 60 days (provisional < 28 valid days)" testId="card-baseline">
+    <Card explain="ov.baseline" title="Today vs your baseline" subtitle="Robust median of the previous 60 days (provisional < 28 valid days)" testId="card-baseline">
       <table className="w-full text-xs">
         <thead className="text-muted"><tr><th className="py-1 text-left font-normal">Metric</th><th className="text-right font-normal">Today</th>
           <th className="text-right font-normal">Usual</th><th className="text-right font-normal">vs usual</th></tr></thead>
@@ -232,7 +235,7 @@ function BaselineCard({ d }: { d: any }) {
 function ChangeCard({ d }: { d: any }) {
   const m = d.most_important_change;
   return (
-    <Card title="Most important change from baseline" testId="card-change">
+    <Card explain="ov.change" title="Most important change from baseline" testId="card-change">
       {!m ? <p className="text-xs text-fg2">No metric is more than one robust SD away from your usual today.</p> : (
         <div>
           <div className="text-lg font-semibold">{m.label}</div>
@@ -246,7 +249,7 @@ function ChangeCard({ d }: { d: any }) {
 
 function InsightsCard({ d }: { d: any }) {
   return (
-    <Card title="Insights" subtitle="Deterministic rules with conservative thresholds" testId="card-insights" actions={<Sparkles size={14} className="text-muted" />}>
+    <Card explain="ov.insights" title="Insights" subtitle="Deterministic rules with conservative thresholds" testId="card-insights" actions={<Sparkles size={14} className="text-muted" />}>
       {!d.insights?.length ? <p className="text-xs text-fg2">No new insights — nothing has changed enough to report.</p> : (
         <ul className="space-y-3">
           {d.insights.slice(0, 3).map((i: any) => (
@@ -267,7 +270,7 @@ function QualityCard({ d }: { d: any }) {
   const q = d.data_quality;
   const pct = Math.round((q.score ?? 0) * 100);
   return (
-    <Card title="Data quality" onClick={() => navigate("settings")} testId="card-quality">
+    <Card explain="ov.quality" title="Data quality" onClick={() => navigate("settings")} testId="card-quality">
       <div className="grid grid-cols-3 gap-3">
         <Stat label="Completeness (7 d)" value={`${pct}%`} tone={pct < 60 ? "muted" : undefined} />
         <Stat label="Nights with sleep" value={`${q.sleep_nights_7d}/7`} />
@@ -281,7 +284,7 @@ function PeriodsCard({ d, period, setPeriod }: { d: any; period: string; setPeri
   const p = d.periods[period];
   const label = { "1": "Today vs yesterday", "7": "Last 7 days vs previous 7", "30": "Last 30 days vs previous 30", "90": "Last 90 days vs previous 90" }[period];
   return (
-    <Card title="Comparisons" subtitle={label} testId="card-periods"
+    <Card explain="ov.periods" title="Comparisons" subtitle={label} testId="card-periods"
       actions={<Select label="Comparison period" value={period} onChange={setPeriod} options={[{ value: "1", label: "Today" }, { value: "7", label: "7 days" },
         { value: "30", label: "30 days" }, { value: "90", label: "90 days" }]} />}>
       <table className="w-full text-xs">

@@ -36,7 +36,7 @@ export default function Reports() {
       {busy && <Spinner label={`Exporting ${busy}…`} />}{done && <div className="mb-2 text-xs text-good" role="status">{done}</div>}{!!err && <ErrorBox error={err} />}
       <Tabs value={tab} onChange={setTab} tabs={[{ id: "report", label: "Health report" }, { id: "briefs", label: "Briefs" }]}>
         <TabPanel value="report">
-          <Card>{rep.error ? <ErrorBox error={rep.error} /> : !rep.data ? <Skeleton h={600} /> : <ReportView r={rep.data} />}</Card>
+          <Card explain="rp.preview">{rep.error ? <ErrorBox error={rep.error} /> : !rep.data ? <Skeleton h={600} /> : <ReportView r={rep.data} />}</Card>
         </TabPanel>
         <TabPanel value="briefs"><Briefs date={end} /></TabPanel>
       </Tabs>
@@ -48,7 +48,7 @@ function Briefs({ date }: { date: string }) {
   const [kind, setKind] = useState("morning");
   const b = useEngine<any>("briefs.get", { date, kind });
   return (
-    <Card title={{ morning: "Daily Morning Brief", weekly: "Weekly Health Review", monthly: "Monthly Deep Analysis", quarterly: "Quarterly Trend Report" }[kind]}
+    <Card explain="rp.kind" title={{ morning: "Daily Morning Brief", weekly: "Weekly Health Review", monthly: "Monthly Deep Analysis", quarterly: "Quarterly Trend Report" }[kind]}
       actions={<Select label="Brief type" value={kind} onChange={setKind} options={[{ value: "morning", label: "Morning" }, { value: "weekly", label: "Weekly" },
         { value: "monthly", label: "Monthly" }, { value: "quarterly", label: "Quarterly" }]} />}>
       {!b.data ? <Skeleton h={300} /> : (

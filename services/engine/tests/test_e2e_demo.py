@@ -134,3 +134,26 @@ def test_synthetic_refused_for_real_profile(db):
     from vitalis_engine import synthetic
     with pytest.raises(PermissionError):
         synthetic.load_into(db, 30)
+
+
+def test_explain_data_reports_days_and_baseline_status(demo_db):
+    """The Explain panel's 'Your data' section: real counts and baseline status; unknown metrics are rejected."""
+    import io
+
+    from vitalis_engine.rpc import methods  # noqa: F401  (registers the methods)
+    from vitalis_engine.rpc.server import Engine, dispatch
+
+    eng = Engine(demo_db, io.StringIO(), demo=True)
+    r = dispatch(eng, {"id": 1, "method": "explain.data",
+                       "params": {"date": "2026-11-19", "features": ["rhr", "hrv_night_rmssd", "sleep_tst_min"],
+                                  "scores": ["recovery"]}})
+    assert "error" not in r, r
+    res = r["result"]
+    by = {f["key"]: f for f in res["features"]}
+    assert by["rhr"]["days"] >= 80 and by["rhr"]["recent_days"] <= 60
+    assert by["rhr"]["baseline"]["status"] == "stable" and by["rhr"]["baseline"]["n"] >= 28
+    assert by["sleep_tst_min"]["label"]
+    assert res["scores"][0]["kind"] == "recovery" and res["scores"][0]["days"] > 0
+    assert res["baseline_settings"]["min_provisional"] == 14
+    bad = dispatch(eng, {"id": 2, "method": "explain.data", "params": {"date": "2026-11-19", "features": ["DROP TABLE"]}})
+    assert bad["error"]["code"] == "invalid_params"

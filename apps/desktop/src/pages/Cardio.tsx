@@ -1,8 +1,11 @@
 import { Chart, dailyLines } from "../components/Chart";
+import type { ExplainId } from "../explain/content";
 import { Badge, Card, Empty, ErrorBox, Grid, Note, PageHeader, Prov, Skeleton } from "../components/ui";
 import { fmtDate } from "../lib/format";
 import { useEngine, useGlobalRange } from "../lib/hooks";
 import { getVar } from "./SleepLab";
+
+const LINE_EXPLAIN: Record<string, ExplainId> = { rhr: "cd.rhr", hrv_night_rmssd: "cd.hrv", spo2_night_mean: "cd.spo2", resp_rate_night: "cd.resp" };
 
 export default function Cardio() {
   const range = useGlobalRange();
@@ -17,7 +20,7 @@ export default function Cardio() {
   const has = (k: string) => col(k).some((v) => v != null);
   const ctx = (m: string[], t: string) => ({ metrics: m, start, end: range.end, title: t });
   const lineCard = (k: string, title: string, sub: string, color: string, prov: string, empty?: string) => (
-    <Card key={k} title={title} subtitle={sub} actions={<Prov kind={prov} />}>
+    <Card key={k} title={title} subtitle={sub} actions={<Prov kind={prov} />} explain={LINE_EXPLAIN[k]}>
       {has(k) ? <Chart height={220} title={title} zoom context={ctx([k], title)} table={{ columns: ["Date", title], rows: d.map((x) => [x.date, x[k] == null ? null : Math.round(x[k] * 10) / 10]) }}
         option={dailyLines(dates, [{ name: title, data: col(k), color: getVar(color) }])} />
         : <Empty title="Not available from your sources">{empty}</Empty>}
@@ -30,11 +33,11 @@ export default function Cardio() {
         {lineCard("rhr", "Resting heart rate", "Calculated overnight (lowest 30-min mean during sleep); source value used only as fallback", "--series-2", "calculated")}
         {lineCard("hrv_night_rmssd", "Overnight HRV (RMSSD)", "Imported from sources that measure beat-to-beat intervals — never derived from averaged HR", "--series-1", "imported",
           "Samsung's public interfaces do not provide HRV. HRV appears here only if Health Connect or Google Health supplies an RMSSD record.")}
-        <Card title="Day vs night heart rate" subtitle="Mean awake heart rate and mean heart rate during sleep">
+        <Card explain="cd.day_night" title="Day vs night heart rate" subtitle="Mean awake heart rate and mean heart rate during sleep">
           {has("hr_day_mean") ? <Chart height={220} title="Day vs night heart rate" option={dailyLines(dates, [
             { name: "Awake mean", data: col("hr_day_mean"), color: getVar("--series-3") }, { name: "Asleep mean", data: col("hr_sleep_mean"), color: getVar("--series-2") }])} /> : <Empty title="No heart-rate data" />}
         </Card>
-        <Card title="Heart-rate distribution" subtitle={q.data.hr_histogram ? `${q.data.hr_histogram.n.toLocaleString()} samples · ${q.data.hr_histogram.period.join(" → ")}` : ""}>
+        <Card explain="cd.hist" title="Heart-rate distribution" subtitle={q.data.hr_histogram ? `${q.data.hr_histogram.n.toLocaleString()} samples · ${q.data.hr_histogram.period.join(" → ")}` : ""}>
           {!q.data.hr_histogram ? <Empty title="No heart-rate samples" /> : (
             <Chart height={220} title="Heart-rate distribution" option={(p) => ({ legend: { show: false }, tooltip: { trigger: "axis" },
               xAxis: { type: "category", data: q.data.hr_histogram.edges.slice(0, -1).map((e: number) => `${e}`), name: "bpm" }, yAxis: { type: "value", name: "samples" },
@@ -43,7 +46,7 @@ export default function Cardio() {
         </Card>
         {lineCard("spo2_night_mean", "Overnight SpO2", "Mean of overnight samples (Galaxy Watch: enable 'SpO2 during sleep' in Samsung Health)", "--series-1", "measured")}
         {lineCard("resp_rate_night", "Overnight respiratory rate", "Breaths per minute", "--series-4", "measured", "Not exposed by the Samsung SDK; appears if Health Connect or Google Health provides it.")}
-        <Card title="Workout heart-rate zones" subtitle="Minutes per zone (% of max HR) — see Activity for details">
+        <Card explain="cd.zones" title="Workout heart-rate zones" subtitle="Minutes per zone (% of max HR) — see Activity for details">
           {load.data?.daily?.some((x: any) => x.hr_z2_min != null) ? (
             <Chart height={220} title="Heart-rate zones" option={(p) => ({ legend: { data: ["Z1", "Z2", "Z3", "Z4", "Z5"] }, tooltip: { valueFormatter: (v: any) => `${Math.round(v)} min` },
               xAxis: { type: "category", data: load.data.daily.map((x: any) => x.date), axisLabel: { formatter: (v: string) => v.slice(5) } }, yAxis: { type: "value", name: "min" },
@@ -51,7 +54,7 @@ export default function Cardio() {
                 itemStyle: { color: ["#cde2fb", "#86b6ef", "#3987e5", "#1c5cab", "#0d366b"][z - 1], borderColor: p.surface, borderWidth: 1 } })) })} />
           ) : <Empty title="Zones unavailable">Set your birth year or maximum heart rate in Settings to compute zones.</Empty>}
         </Card>
-        <Card title="Blood pressure" subtitle="Imported cuff/watch readings or manual entries">
+        <Card explain="cd.bp" title="Blood pressure" subtitle="Imported cuff/watch readings or manual entries">
           {q.data.blood_pressure.length === 0 ? <Empty title="No blood-pressure readings">Galaxy Watch blood pressure requires cuff calibration in Samsung Health Monitor and may not be shared with other apps.</Empty> : (
             <Chart height={220} title="Blood pressure" option={(p) => {
               const sys = q.data.blood_pressure.filter((b: any) => b.metric === "bp_systolic");
@@ -62,7 +65,7 @@ export default function Cardio() {
             }} />
           )}
         </Card>
-        <Card title="Resting HR vs sleep · HRV vs sleep" subtitle="Correlations across nights (Spearman, 95% CI)">
+        <Card explain="cd.correlations" title="Resting HR vs sleep · HRV vs sleep" subtitle="Correlations across nights (Spearman, 95% CI)">
           {Object.entries(q.data.relationships).map(([k, r]: any) => (
             <div key={k} className="mb-2 flex items-center justify-between border-t border-line pt-2 text-xs">
               <span className="text-fg2">{k === "sleep_tst_min~rhr" ? "Sleep duration ↔ resting HR" : "Sleep duration ↔ HRV"}</span>
@@ -71,7 +74,7 @@ export default function Cardio() {
             </div>
           ))}
         </Card>
-        <Card title="Authorized heart records" subtitle="Irregular-rhythm notifications and sleep-apnea feature records, shown verbatim">
+        <Card explain="cd.records" title="Authorized heart records" subtitle="Irregular-rhythm notifications and sleep-apnea feature records, shown verbatim">
           {q.data.events.length === 0 ? <p className="text-xs text-fg2">No such records were shared by your sources in this period.</p> : (
             <ul className="space-y-1 text-xs">{q.data.events.map((e: any, i: number) => <li key={i}>{fmtDate(e.start_utc)} · {e.metric.replaceAll("_", " ")} · {e.value_text ?? ""} ({e.provider})</li>)}</ul>
           )}

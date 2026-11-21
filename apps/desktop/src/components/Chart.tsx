@@ -1,5 +1,5 @@
 // ECharts wrapper: theme-aware (reads CSS tokens), crosshair tooltips, zoom/pan, PNG export,
-// a data-table view for accessibility, and an "Explain this" action that hands the chart context to the AI.
+// a data-table view for accessibility, and an "Ask AI" action that hands the chart context to the AI analyst.
 import * as echarts from "echarts";
 import { Image, MessageSquareText, Table2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -102,8 +102,8 @@ export function Chart({ option, height = 240, context, table, title, onClick, te
         {table && <Button size="sm" variant="ghost" onClick={() => setShowTable((v) => !v)} title={showTable ? "Show chart" : "Show data table"}>
           <Table2 size={13} /></Button>}
         {!showTable && <Button size="sm" variant="ghost" onClick={savePng} title="Save PNG"><Image size={13} /></Button>}
-        {context && <Button size="sm" variant="ghost" onClick={() => explain(context)} title="Explain this with the AI analyst"
-          testId="explain-chart"><MessageSquareText size={13} /> Explain</Button>}
+        {context && <Button size="sm" variant="ghost" onClick={() => explain(context)} title="Ask the AI analyst about this chart"
+          testId="ask-ai-chart"><MessageSquareText size={13} /> Ask AI</Button>}
       </div>}
       {showTable && table ? (
         <div className="max-h-[360px] overflow-auto rounded-lg border border-line" style={{ minHeight: height }}>
