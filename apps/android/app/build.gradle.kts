@@ -91,7 +91,10 @@ if (withEngine) {
         defaultConfig {
             version = "3.10"
             pip {
-                options("--find-links", rootProject.file("python-wheels/dist").absolutePath)
+                // CI-built Android wheels: python-wheels/dist and its per-package subfolders (pip does not recurse).
+                val wheels = rootProject.file("python-wheels/dist")
+                (listOf(wheels) + (wheels.listFiles()?.filter { it.isDirectory }?.sorted() ?: emptyList()))
+                    .forEach { options("--find-links", it.absolutePath) }
                 install("-r", rootProject.file("python-wheels/requirements-phone.txt").absolutePath)
             }
         }
