@@ -76,14 +76,41 @@ def _after_data_change(engine: Engine, start: str | None, end: str | None, reaso
     return res
 
 
+SYNC_RECOMPUTE_DEBOUNCE_S = 2.0
+_sync_pending_lock = threading.Lock()
+
+
+def _schedule_sync_recompute(engine: Engine, start: str | None, end: str | None) -> None:
+    """A phone sends history in many batches; recompute once for their combined date range after they stop arriving."""
+    with _sync_pending_lock:
+        p = engine.__dict__.setdefault("_sync_pending", {"full": False, "start": None, "end": None, "timer": None})
+        if start is None or end is None:
+            p["full"] = True
+        else:
+            p["start"] = start if p["start"] is None else min(p["start"], start)
+            p["end"] = end if p["end"] is None else max(p["end"], end)
+        if p["timer"] is not None:
+            p["timer"].cancel()
+        p["timer"] = threading.Timer(SYNC_RECOMPUTE_DEBOUNCE_S, _flush_sync_recompute, args=(engine,))
+        p["timer"].daemon = True
+        p["timer"].start()
+
+
+def _flush_sync_recompute(engine: Engine) -> None:
+    with _sync_pending_lock:
+        p = engine.__dict__["_sync_pending"]
+        start, end = (None, None) if p["full"] else (p["start"], p["end"])
+        p.update(full=False, start=None, end=None, timer=None)
+    _after_data_change(engine, start, end, "sync")
+
+
 def on_sync_event(engine: Engine, ev: dict) -> None:
     engine.event({"type": "sync", **{k: v for k, v in ev.items() if k != "summary"},
                   "summary": ev.get("summary")})
     if ev.get("event") == "batch_imported":
         s = ev.get("summary") or {}
         if s.get("inserted") or s.get("updated") or s.get("deleted"):
-            threading.Thread(target=_after_data_change, args=(engine, s.get("min_date"), s.get("max_date"), "sync"),
-                             daemon=True).start()
+            _schedule_sync_recompute(engine, s.get("min_date"), s.get("max_date"))
 
 
 # ---------------------------------------------------------------------------------------------- system / prefs

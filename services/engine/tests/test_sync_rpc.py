@@ -154,3 +154,33 @@ def test_rpc_wrong_key_is_fatal(tmp_path):
     out, _ = q.communicate(json.dumps({"type": "init", "db_path": str(tmp_path / "e.db"),
                                        "key": os.urandom(32).hex()}) + "\n", timeout=20)
     assert json.loads(out.splitlines()[0])["type"] == "fatal" and q.returncode == 2
+
+
+def test_history_batches_trigger_one_combined_recompute(monkeypatch):
+    """A phone's history arrives in many batches; the engine recomputes once, for their combined range."""
+    import threading
+    import time
+
+    from vitalis_engine.rpc import methods
+
+    calls = []
+    done = threading.Event()
+
+    def fake_after(engine, start, end, reason):
+        calls.append((start, end, reason))
+        done.set()
+
+    monkeypatch.setattr(methods, "_after_data_change", fake_after)
+    monkeypatch.setattr(methods, "SYNC_RECOMPUTE_DEBOUNCE_S", 0.3)
+
+    class FakeEngine:
+        def event(self, ev):
+            pass
+
+    eng = FakeEngine()
+    for start, end in [("2026-03-01", "2026-03-30"), ("2026-01-05", "2026-02-03"), ("2026-10-01", "2026-11-20")]:
+        methods.on_sync_event(eng, {"event": "batch_imported", "summary": {"inserted": 5, "min_date": start, "max_date": end}})
+    methods.on_sync_event(eng, {"event": "batch_imported", "summary": {"inserted": 0, "duplicate": 9}})  # nothing new
+    assert done.wait(5)
+    time.sleep(0.5)
+    assert calls == [("2026-01-05", "2026-11-20", "sync")]

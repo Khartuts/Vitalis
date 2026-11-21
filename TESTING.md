@@ -8,10 +8,10 @@ listed as "not run" was run.
 
 | Suite | Command | Result |
 |---|---|---|
-| Engine (pytest) | `cd services/engine && .venv/bin/pytest -q` | **49 passed** |
+| Engine (pytest) | `cd services/engine && .venv/bin/pytest -q` | **50 passed** (v0.1.1) |
 | Desktop unit (Vitest) | `cd apps/desktop && npx vitest run` | **13 passed** |
 | Desktop end-to-end (real Electron + Playwright, Xvfb) | `xvfb-run -a node tests/e2e/app.e2e.mjs` | **23/23 steps passed**, 0 console errors |
-| Android unit (JUnit) | `cd apps/android && ./gradlew :app:testDebugUnitTest` | **5 passed** |
+| Android unit (JUnit) | `cd apps/android && ./gradlew :app:testDebugUnitTest` | **6 passed** (v0.1.1) |
 | Android lint | `./gradlew :app:lintDebug` | 0 errors (warnings: newer versions available; intentional custom TrustManager for pinning) |
 | Engine smoke (stdio protocol) | `python scripts/smoke_engine.py <python>` | passed with the dev interpreter |
 | Windows bundle under Wine 9 | Windows CPython 3.12.10 + SQLCipher 4.20 + Pydantic + AES-GCM | **passed** |

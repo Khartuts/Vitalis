@@ -62,8 +62,23 @@ Requirements: Android 9+ (Health Connect), Samsung Health ≥ 6.30.2 for the opt
 6. *Request selected permissions* → approve the data types you want (all optional). Approve **"Access past data"**
    to sync more than 30 days of history.
 7. *Sync now*. Optionally enable hourly background sync (needs "read in the background").
-8. *Run availability probe* to see exactly which data your phone shares; the report appears on the PC under
-   Sources & quality.
+8. *Run availability probe* to see exactly which data your phone shares: records per type in the last 30 days, the
+   apps that wrote them and the **oldest** record VITALIS can read. The report also appears on the PC under
+   Sources & quality. "0 records" for everything means Samsung Health is not sharing into Health Connect (step 3).
+9. *Re-read all history* reads everything again from the oldest record — use it after granting "Access past data"
+   or after Samsung Health starts sharing. Records the PC already has are recognized and skipped.
+
+**Getting older history.** The companion can only read what Samsung Health has written into Health Connect. If the
+probe's "oldest" date is recent although Samsung Health shows older data, that history is not in Health Connect.
+Bring it over with Samsung Health's own export: Samsung Health → ⋮ / menu → Settings → *Download personal data* →
+Download. It saves CSV files in a folder under `Download/Samsung Health/` on the phone; compress that folder to a ZIP
+(My Files → long-press the folder → *Compress*), copy it to the PC and import it under Data Sources & Settings →
+Imports → *Samsung Health export (ZIP/CSV)*. You see a preview before anything is imported; data that also arrived
+through Health Connect is de-duplicated by source priority.
+
+**Updating the companion.** Builds from GitHub are signed with a key that changes per build, so Android will not
+install a new version over the old one: uninstall VITALIS Companion first, install the new APK, pair again and
+re-grant the permissions. Your data on the PC is not affected.
 
 No shared network? Use *Export encrypted file* in the companion and import the `.vitalis-sync` file on the PC
 (Settings → Imports). The file is AES-256-GCM encrypted with the key from your pairing QR.

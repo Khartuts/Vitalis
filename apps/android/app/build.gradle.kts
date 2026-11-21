@@ -26,8 +26,8 @@ android {
         applicationId = "app.vitalis.companion"
         minSdk = 28
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.1.1"
         buildConfigField("boolean", "HAS_SAMSUNG_SDK", hasSamsungSdk.toString())
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

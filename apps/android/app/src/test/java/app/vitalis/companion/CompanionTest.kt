@@ -3,7 +3,9 @@ package app.vitalis.companion
 import app.vitalis.companion.sync.FileCrypto
 import app.vitalis.companion.sync.Pairing
 import app.vitalis.companion.sync.SyncClient
+import app.vitalis.companion.sync.SyncCounts
 import app.vitalis.companion.sync.SyncRepository
+import app.vitalis.companion.sync.summary
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import org.junit.Assert.*
@@ -73,5 +75,11 @@ class CompanionTest {
         assertEquals(4, w.size)
         assertEquals(w.last().second, s.plusSeconds(95L * 86400))
         w.zipWithNext().forEach { (a, b) -> assertEquals(a.second, b.first) }
+    }
+
+    @Test fun syncSummaryNamesWhatWasSent() {
+        assertEquals("no new records", SyncCounts().summary())
+        val c = SyncCounts(); c["Sleep (sessions and stages)"] = 31; c["Heart rate"] = 0; c["Activity totals"] = 2208
+        assertEquals("Sleep (sessions and stages) 31, Activity totals 2208", c.summary())
     }
 }

@@ -337,10 +337,14 @@ function SourcesTab() {
         {!avail.data?.length ? <Empty title="No report yet">Run "Check what my phone shares" in the companion after pairing. Until then, metrics marked 🔍 in DATA_ACCESS_MATRIX.md are unverified for your device.</Empty> : (
           <div className="max-h-80 overflow-auto text-xs">
             <div className="mb-1 text-fg2">Received {new Date(avail.data[0].received_at).toLocaleString()} ({avail.data[0].provider})</div>
-            <table className="w-full"><thead className="text-muted"><tr><th className="text-left font-normal">Type</th><th className="text-left font-normal">Status</th><th className="text-right font-normal">Records (30 d)</th><th className="text-left font-normal">Origins</th></tr></thead>
+            <table className="w-full"><thead className="text-muted"><tr><th className="text-left font-normal">Type</th><th className="text-left font-normal">Status</th><th className="text-right font-normal">Records (30 d)</th><th className="text-left font-normal">Oldest</th><th className="text-left font-normal">Origins</th></tr></thead>
               <tbody>{(avail.data[0].report.types ?? []).map((t: any) => (
                 <tr key={t.type} className="border-t border-line"><td className="py-1">{t.type}</td><td><Badge tone={t.count > 0 ? "good" : t.permission === "granted" ? "neutral" : "warning"}>{t.count > 0 ? "has data" : t.permission}</Badge></td>
-                  <td className="num text-right">{t.count}</td><td className="text-fg2">{(t.origins ?? []).join(", ")}</td></tr>))}</tbody></table>
+                  <td className="num text-right">{t.count}</td><td className="num">{t.oldest ? String(t.oldest).slice(0, 10) : "—"}</td>
+                  <td className="text-fg2">{(t.origins ?? []).join(", ")}{t.error && <span className="text-critical"> · {t.error}</span>}</td></tr>))}</tbody></table>
+            <p className="mt-2 text-fg2">"Oldest" is the oldest record Health Connect lets VITALIS read. If it is recent although you have older
+              data in Samsung Health, either the older data was never shared to Health Connect, or "Access past data" is not granted —
+              the Samsung Health export (Imports tab) brings the full history.</p>
           </div>
         )}
       </Card>

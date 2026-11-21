@@ -102,6 +102,16 @@ class HealthConnectSource(private val context: Context) {
         return out
     }
 
+    /**
+     * Time of the oldest record of this type that Health Connect lets this app read, or null when there is none.
+     * Health Connect applies the permission rules itself: without "Access past data" only records from 30 days
+     * before the first grant onward are visible.
+     */
+    suspend fun oldest(spec: TypeSpec): Instant? {
+        val res = client.readRecords(ReadRecordsRequest(spec.cls, TimeRangeFilter.before(Instant.now()), ascendingOrder = true, pageSize = 1))
+        return res.records.firstOrNull()?.let { firstTime(it) }
+    }
+
     /** Hourly (and daily) totals via HC aggregation, which de-duplicates overlapping sources. */
     suspend fun readAggregates(granted: Set<String>, start: Instant, end: Instant, zone: ZoneId): List<JsonObject> {
         val out = mutableListOf<JsonObject>()
@@ -178,7 +188,10 @@ class HealthConnectSource(private val context: Context) {
     }
 
     // ---------------------------------------------------------------------------------------------- probe
-    /** Reports, per type, whether permission is granted and how many records exist in the last 30 days (and from which apps). */
+    /**
+     * Reports, per type: permission state, how many records exist in the last 30 days, from which apps and devices,
+     * the newest record in that window and the oldest record readable at all (so missing history is visible).
+     */
     suspend fun availabilityProbe(): JsonObject {
         val granted = granted()
         val end = Instant.now()
@@ -202,6 +215,7 @@ class HealthConnectSource(private val context: Context) {
                                 putJsonArray("origins") { recs.map { it.metadata.dataOrigin.packageName }.distinct().take(8).forEach { add(it) } }
                                 putJsonArray("devices") { recs.mapNotNull { it.metadata.device?.model }.distinct().take(5).forEach { add(it) } }
                                 recs.maxOfOrNull { lastTime(it) }?.let { put("newest", it.toString()) }
+                                oldest(spec)?.let { put("oldest", it.toString()) }
                             } catch (e: Exception) {
                                 put("count", 0); put("error", e.javaClass.simpleName + ": " + (e.message ?: ""))
                             }
@@ -210,6 +224,18 @@ class HealthConnectSource(private val context: Context) {
                 }
             }
         }
+    }
+
+    private fun firstTime(r: Record): Instant? {
+        when (r) { // types synced via aggregates have no serializer branch
+            is StepsRecord -> return r.startTime
+            is DistanceRecord -> return r.startTime
+            is ActiveCaloriesBurnedRecord -> return r.startTime
+            else -> {}
+        }
+        val o = HcSerializer.serialize(r) ?: return null
+        val t = (o["time"] ?: o["startTime"])?.jsonPrimitive?.contentOrNull ?: return null
+        return runCatching { Instant.parse(t) }.getOrNull()
     }
 
     private fun lastTime(r: Record): Instant {

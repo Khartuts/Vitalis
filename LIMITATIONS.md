@@ -8,6 +8,9 @@
 * Which types Samsung Health actually writes into Health Connect for a Galaxy Watch6 (resting HR, respiratory rate,
   skin temperature, HRV) **has not been verified on your device** — run the companion's availability probe.
 * Health Connect returns only 30 days before the first grant unless "Access past data" is granted.
+* The companion reads only what Samsung Health has written into Health Connect. How much older data Samsung Health
+  writes when sharing is switched on has not been verified; the probe's "oldest" date shows it for your phone, and
+  the Samsung Health export (Download personal data) is the route for full history.
 * Samsung Health exports change format between versions; the export adapter recognizes known tables by column
   suffix and shows a preview, but unknown formats are skipped, not guessed. Stage codes 40001–40004 are assumed.
 * Wrist sleep staging, SpO2 and calories are estimates with known error; VITALIS labels them as such.

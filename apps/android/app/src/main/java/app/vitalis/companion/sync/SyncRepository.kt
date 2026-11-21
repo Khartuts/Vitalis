@@ -16,6 +16,13 @@ import java.util.UUID
 
 data class SyncResult(val ok: Boolean, val message: String, val records: Int = 0, val batches: Int = 0)
 
+/** Records sent per type (label → count), in reading order. */
+typealias SyncCounts = LinkedHashMap<String, Int>
+
+fun SyncCounts.summary(): String =
+    if (isEmpty() || values.all { it == 0 }) "no new records"
+    else entries.filter { it.value > 0 }.joinToString(", ") { "${it.key} ${it.value}" }
+
 /** Builds vitalis.sync.v1 batches and delivers them to the paired desktop (or into an encrypted file). */
 class SyncRepository(private val context: Context) {
     val store = SecureStore(context)
@@ -25,6 +32,8 @@ class SyncRepository(private val context: Context) {
     companion object {
         const val MAX_BATCH_RECORDS = 4000
         const val WINDOW_DAYS = 30L
+        /** History reads start at the oldest readable record, but never more than this far back. */
+        const val MAX_HISTORY_DAYS = 3650L
 
         fun chunk(items: List<JsonObject>, size: Int = MAX_BATCH_RECORDS): List<List<JsonObject>> =
             if (items.isEmpty()) emptyList() else items.chunked(size)
@@ -78,69 +87,90 @@ class SyncRepository(private val context: Context) {
     }.toString()
 
     // ------------------------------------------------------------------------------------------ collection
-    /** Collects records to send. `deliver` is invoked per batch; cursors are saved only after it returns. */
+    /**
+     * Collects records to send. `deliver` is invoked per batch; cursors are saved only after it returns.
+     * full = true ignores saved change tokens and re-reads everything Health Connect lets this app read, starting at
+     * the oldest record of each type (the desktop recognizes records it already has, so this is safe to repeat).
+     */
     private suspend fun collect(full: Boolean, sinceDays: Long?, deliver: suspend (records: List<JsonObject>, deletions: List<String>, cursor: String) -> Unit,
-                                progress: (String) -> Unit): Int {
+                                progress: (String) -> Unit): SyncCounts {
         val granted = hc.granted()
         val zone = ZoneId.systemDefault()
         val now = Instant.now()
-        val history = HealthConnectSource.HISTORY_PERMISSION in granted
-        val initialDays = sinceDays ?: if (history) 365L else 30L
-        var total = 0
+        val floor = now.minus(Duration.ofDays(MAX_HISTORY_DAYS))
+        val counts = SyncCounts()
+        suspend fun readFrom(spec: app.vitalis.companion.hc.TypeSpec): Instant? =
+            if (sinceDays != null) now.minus(Duration.ofDays(sinceDays))
+            else try { hc.oldest(spec)?.let { maxOf(it, floor) } } catch (ex: SecurityException) { null }
         for (spec in HealthConnectSource.TYPES) {
             if (spec.permission !in granted || !hc.featureAvailable(spec)) continue
             if (spec.name in HealthConnectSource.AGGREGATED) continue
+            counts.putIfAbsent(spec.label, 0)
             val tokenKey = "chg_${spec.name}"
             val existing = if (full) null else store.get(tokenKey)
             if (existing == null) {
                 val newToken = hc.changesToken(spec) // taken before reading so nothing between read and token is lost
-                for ((s, e) in windows(now.minus(Duration.ofDays(initialDays)), now)) {
+                val start = readFrom(spec) // null: Health Connect has no record of this type for this app
+                if (start != null) for ((s, e) in windows(start, now)) {
                     progress("${spec.label}: reading ${s.atZone(zone).toLocalDate()}…")
                     val recs = try { hc.readRaw(spec, s, e) } catch (ex: Exception) {
                         if (ex is SecurityException) emptyList() else throw ex
                     }
                     val ser = recs.mapNotNull { HcSerializer.serialize(it) }
-                    for (part in chunk(ser)) { deliver(part, emptyList(), "${spec.name}:history"); total += part.size }
+                    for (part in chunk(ser)) { deliver(part, emptyList(), "${spec.name}:history"); counts[spec.label] = counts.getValue(spec.label) + part.size }
                 }
                 if (sinceDays == null) store.put(tokenKey, newToken)
             } else {
                 progress("${spec.label}: checking changes…")
                 val ch = hc.changesSince(existing)
                 if (ch.expired) {
-                    store.put(tokenKey, null) // token unused >30 days: re-read the last 30 days next time
+                    store.put(tokenKey, null) // token unused >30 days: re-read history next time
                     progress("${spec.label}: change history expired, will re-read")
                     continue
                 }
                 val ser = ch.upserts.mapNotNull { HcSerializer.serialize(it) }
                 val parts = chunk(ser).ifEmpty { if (ch.deletions.isNotEmpty()) listOf(emptyList()) else emptyList() }
-                parts.forEachIndexed { i, part -> deliver(part, if (i == 0) ch.deletions else emptyList(), "${spec.name}:changes"); total += part.size }
+                parts.forEachIndexed { i, part ->
+                    deliver(part, if (i == 0) ch.deletions else emptyList(), "${spec.name}:changes")
+                    counts[spec.label] = counts.getValue(spec.label) + part.size
+                }
                 store.put(tokenKey, ch.nextToken)
             }
         }
-        // De-duplicated activity totals: re-read from (last end − 2 days) to now.
-        val aggStart = if (full || sinceDays != null) now.minus(Duration.ofDays(initialDays))
-            else store.get("agg_end")?.let { Instant.parse(it).minus(Duration.ofDays(2)) } ?: now.minus(Duration.ofDays(initialDays))
-        for ((s, e) in windows(aggStart, now)) {
-            progress("Activity totals ${s.atZone(zone).toLocalDate()}…")
-            val agg = hc.readAggregates(granted, s, e, zone)
-            for (part in chunk(agg)) { deliver(part, emptyList(), "aggregates"); total += part.size }
+        // De-duplicated activity totals. Incremental: re-read from (last end − 2 days); otherwise from the oldest record.
+        val lastAggEnd = if (full || sinceDays != null) null else store.get("agg_end")?.let { Instant.parse(it) }
+        val aggStart = when {
+            sinceDays != null -> now.minus(Duration.ofDays(sinceDays))
+            lastAggEnd != null -> lastAggEnd.minus(Duration.ofDays(2))
+            else -> HealthConnectSource.TYPES.filter { it.name in HealthConnectSource.AGGREGATED && it.permission in granted }
+                .mapNotNull { readFrom(it) }.minOrNull()
+        }
+        if (aggStart != null) {
+            counts.putIfAbsent("Activity totals", 0)
+            for ((s, e) in windows(aggStart, now)) {
+                progress("Activity totals ${s.atZone(zone).toLocalDate()}…")
+                val agg = hc.readAggregates(granted, s, e, zone)
+                for (part in chunk(agg)) { deliver(part, emptyList(), "aggregates"); counts["Activity totals"] = counts.getValue("Activity totals") + part.size }
+            }
         }
         if (sinceDays == null) store.put("agg_end", now.toString())
-        return total
+        return counts
     }
 
-    suspend fun syncNow(progress: (String) -> Unit = {}): SyncResult = withContext(Dispatchers.IO) {
+    /** full = true: "Re-read all history" (ignores change tokens; see [collect]). */
+    suspend fun syncNow(full: Boolean = false, progress: (String) -> Unit = {}): SyncResult = withContext(Dispatchers.IO) {
         val token = token() ?: return@withContext SyncResult(false, "Pair with your desktop first.")
         val client = client()
         var seq = 0
         try {
             client.hello()
-            val n = collect(full = false, sinceDays = null, deliver = { recs, dels, cursor ->
+            val counts = collect(full = full, sinceDays = null, deliver = { recs, dels, cursor ->
                 progress("Sending batch ${seq + 1} (${recs.size} records)…")
                 client.sendBatch(payload(recs, dels, seq++, cursor), token)
             }, progress = progress)
             sendSamsung(client, token, progress)
-            val msg = "Synced $n records in $seq batches."
+            val n = counts.values.sum()
+            val msg = (if (full) "Re-read all history: " else "Synced ") + "$n records in $seq batches (${counts.summary()})."
             store.put("last_sync", Instant.now().toString()); store.put("last_result", msg)
             SyncResult(true, msg, n, seq)
         } catch (e: SyncHttpException) {
@@ -178,7 +208,7 @@ class SyncRepository(private val context: Context) {
     suspend fun exportEncrypted(days: Long, progress: (String) -> Unit): ByteArray = withContext(Dispatchers.IO) {
         val key = pairing()?.fileKey() ?: throw IllegalStateException("Pair (scan the QR) first — the file key comes from the desktop.")
         val all = mutableListOf<JsonObject>()
-        val n = collect(full = true, sinceDays = days, deliver = { recs, _, _ -> all += recs }, progress = progress)
+        val n = collect(full = true, sinceDays = days, deliver = { recs, _, _ -> all += recs }, progress = progress).values.sum()
         progress("Encrypting $n records…")
         FileCrypto.encrypt(key, payload(all, emptyList(), 0, "file:$days").toByteArray(Charsets.UTF_8))
     }

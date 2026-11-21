@@ -32,6 +32,7 @@ import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -152,6 +153,12 @@ fun CompanionScreen(activity: ComponentActivity) {
                 Button(enabled = !busy && granted.isNotEmpty(), onClick = {
                     scope.launch { busy = true; val r = repo.syncNow { status = it }; status = r.message; busy = false }
                 }) { Text("Sync now") }
+                OutlinedButton(enabled = !busy && granted.isNotEmpty(), onClick = {
+                    scope.launch { busy = true; val r = repo.syncNow(full = true) { status = it }; status = r.message; busy = false }
+                }) { Text("Re-read all history") }
+                Text("Reads everything Health Connect lets this app see again, from the oldest record. Use it after granting " +
+                    "\"Access past data\" or after Samsung Health starts sharing. Records the PC already has are skipped.",
+                    color = Fg2, fontSize = 11.sp)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Switch(checked = autoSync, onCheckedChange = {
                         autoSync = it; repo.store.put("auto_sync", if (it) "1" else "0"); SyncWorker.schedule(ctx, it)
@@ -184,15 +191,23 @@ fun CompanionScreen(activity: ComponentActivity) {
         }
 
         Section("Check what my phone shares") {
-            Text("Reads the last 30 days per type and reports counts and source apps — so you know exactly which metrics are available from your watch.", color = Fg2, fontSize = 12.sp)
+            Text("Counts the records of each type in the last 30 days, shows which apps wrote them and the oldest record " +
+                "Health Connect lets VITALIS read — so you know exactly what your watch shares and how far back.", color = Fg2, fontSize = 12.sp)
             OutlinedButton(enabled = !busy && granted.isNotEmpty(), onClick = {
                 scope.launch { busy = true; probe = repo.sendAvailability(); status = "Availability report ${if (paired) "sent to the PC" else "created"}."; busy = false }
             }) { Text("Run availability probe") }
             probe?.get("types")?.jsonArray?.forEach { t ->
                 val o = t.jsonObject
                 val count = o["count"]?.jsonPrimitive?.int ?: 0
-                Text("${o["label"]?.jsonPrimitive?.content}: ${if (count > 0) "$count records" else o["permission"]?.jsonPrimitive?.content}",
-                    color = if (count > 0) Fg else Fg2, fontSize = 12.sp)
+                val oldest = o["oldest"]?.jsonPrimitive?.contentOrNull?.take(10)
+                val err = o["error"]?.jsonPrimitive?.contentOrNull
+                val state = when (o["permission"]?.jsonPrimitive?.contentOrNull) {
+                    "granted" -> if (count > 0) "$count records in 30 days" else "0 records in 30 days"
+                    "feature_unavailable" -> "not available on this phone"
+                    else -> "permission not granted"
+                }
+                val line = "${o["label"]?.jsonPrimitive?.content}: $state" + (oldest?.let { " · oldest $it" } ?: "") + (err?.let { " · error: $it" } ?: "")
+                Text(line, color = if (count > 0) Fg else Fg2, fontSize = 12.sp)
             }
         }
 
