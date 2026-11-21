@@ -45,3 +45,20 @@ def test_embedded_engine_full_round_trip_without_lan_server(tmp_path, monkeypatc
     fatal = json.loads(bad.receive(60))
     assert fatal["type"] == "fatal"
     assert bad.receive(5) is None
+
+
+def test_phone_local_health_connect_batch(tmp_path):
+    """The phone imports its own Health Connect batches into its engine (same pipeline as the PC's LAN import)."""
+    from conftest import hc
+    eng = _start(tmp_path, demo=False)
+    assert json.loads(eng.receive(60))["type"] == "ready"
+    batch = {"schema": "vitalis.sync.v1", "batch_id": "3f0c9a2e-4b1d-4c6e-9a51-2d7f8e6b1c40", "source": "health_connect", "device": {"model": "SM-S921B"},
+             "records": [hc("RestingHeartRateRecord", id="r1", time="2026-11-18T06:00:00Z", zoneOffset="+01:00", bpm=54)],
+             "deletions": []}
+    r = _call(eng, 1, "ingest.local_batch", {"payload": batch})["result"]
+    assert r["inserted"] == 1
+    again = _call(eng, 2, "ingest.local_batch", {"payload": batch})["result"]
+    assert again.get("already_imported") is True
+    bad = _call(eng, 3, "ingest.local_batch", {"payload": {"schema": "nope"}})
+    assert bad["error"]["code"] in ("invalid_batch", "invalid_params")
+    assert eng.stop() == 0

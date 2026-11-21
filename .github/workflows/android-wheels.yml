@@ -31,7 +31,15 @@ jobs:
       TARGET_VERSION: 3.10.22-0
     steps:
       - uses: actions/checkout@v4
+      # Rebuild only when a recipe, the tool patch, the tool commit or the Python target changes.
+      - name: Reuse a previously built wheel
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: chaquopy/server/pypi/dist
+          key: wheel-${{ matrix.package }}-${{ matrix.abi }}-${{ env.CHAQUOPY_REF }}-${{ env.TARGET_VERSION }}-${{ hashFiles(format('apps/android/python-wheels/recipes/{0}/**', matrix.package), 'apps/android/python-wheels/chaquopy-build-wheel.patch') }}
       - name: Chaquopy build tool (pinned commit)
+        if: steps.cache.outputs.cache-hit != 'true'
         uses: actions/checkout@v4
         with:
           repository: chaquo/chaquopy
@@ -42,24 +50,28 @@ jobs:
             server/pypi
             target
       - name: Apply VITALIS patch to the build tool (see apps/android/python-wheels/chaquopy-build-wheel.patch)
+        if: steps.cache.outputs.cache-hit != 'true'
         working-directory: chaquopy
         run: patch -p1 < "$GITHUB_WORKSPACE/apps/android/python-wheels/chaquopy-build-wheel.patch"
       - uses: actions/setup-python@v5
+        if: steps.cache.outputs.cache-hit != 'true'
         with:
           python-version: |
             3.10
             3.12
       - name: Python-for-Android ${{ env.TARGET_VERSION }} from Maven Central (checksum-verified)
+        if: steps.cache.outputs.cache-hit != 'true'
         run: |
           d=chaquopy/maven/com/chaquo/python/target/$TARGET_VERSION
           mkdir -p "$d"
           base=https://repo1.maven.org/maven2/com/chaquo/python/target/$TARGET_VERSION
           for f in "target-$TARGET_VERSION.pom" "target-$TARGET_VERSION-${{ matrix.abi }}.zip"; do
-            curl -fsSL --retry 4 -o "$d/$f" "$base/$f"
-            sha=$(curl -fsSL --retry 4 "$base/$f.sha1" | cut -c1-40)
+            curl -fsSL --retry 5 --retry-all-errors -o "$d/$f" "$base/$f"
+            sha=$(curl -fsSL --retry 5 --retry-all-errors "$base/$f.sha1" | cut -c1-40)
             echo "$sha  $d/$f" | sha1sum -c -
           done
       - name: Build tools
+        if: steps.cache.outputs.cache-hit != 'true'
         run: |
           sudo apt-get install -y patchelf
           python3.12 -m venv "$RUNNER_TEMP/bw"
@@ -70,6 +82,7 @@ jobs:
             pointer_width=64 build_flags= suppress_build_script_link_lines=false > /tmp/pyo3-android-cp310.cfg
           cat /tmp/pyo3-android-cp310.cfg
       - name: Build ${{ matrix.package }} for ${{ matrix.abi }}
+        if: steps.cache.outputs.cache-hit != 'true'
         working-directory: chaquopy/server/pypi
         run: |
           # The tool's compiler wrapper only keeps -I/-L paths inside the Chaquopy checkout, so the recipes

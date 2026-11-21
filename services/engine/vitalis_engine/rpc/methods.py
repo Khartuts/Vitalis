@@ -880,6 +880,23 @@ def sync_rotate(engine: Engine):
     return {"ok": True, "note": "Re-pair phones to use encrypted file transfer."}
 
 
+class LocalBatchP(P):
+    payload: dict[str, Any]
+
+
+@method("ingest.local_batch", LocalBatchP)
+def ingest_local_batch(engine: Engine, p: LocalBatchP):
+    """Phone app only (not on the renderer allow-list): a vitalis.sync.v1 batch read from this phone's Health Connect,
+    imported into the phone's own engine exactly as the desktop imports batches from the phone."""
+    try:
+        summary = import_sync_payload(engine.db, p.payload, "phone_local")
+    except ValueError as exc:
+        raise RpcError("invalid_batch", str(exc))
+    if summary.get("inserted") or summary.get("updated") or summary.get("deleted"):
+        _schedule_sync_recompute(engine, summary.get("min_date"), summary.get("max_date"))
+    return summary
+
+
 # ---------------------------------------------------------------------------------------------- export / backup / data
 class DirP(P):
     path: str = Field(min_length=1, max_length=1024)
