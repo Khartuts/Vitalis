@@ -101,6 +101,17 @@ if (withEngine) {
         sourceSets.getByName("main").srcDir(stagedPython)
     }
     tasks.matching { it.name.startsWith("merge") && it.name.endsWith("PythonSources") }.configureEach { dependsOn(stageEngine) }
+
+    // The phone screens: the desktop app's web build for Android (apps/desktop: `npm run build:android`).
+    val webBuild = rootProject.file("../desktop/dist-android")
+    val stagedWeb = layout.buildDirectory.dir("generated/vitalis-web")
+    val stageWeb = tasks.register<Sync>("stageVitalisWeb") {
+        doFirst { check(webBuild.resolve("index.html").exists()) { "Run `npm ci && npm run build:android` in apps/desktop first." } }
+        from(webBuild)
+        into(stagedWeb.map { it.dir("web") })
+    }
+    android.sourceSets.getByName("main").assets.srcDir(stagedWeb)
+    tasks.matching { it.name.startsWith("merge") && it.name.endsWith("Assets") }.configureEach { dependsOn(stageWeb) }
 }
 
 dependencies {
@@ -117,6 +128,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.13.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
     implementation("com.journeyapps:zxing-android-embedded:4.3.0")
+    implementation("androidx.webkit:webkit:1.14.0")
     if (hasSamsungSdk) {
         implementation(files(samsungAar))
         implementation("com.google.code.gson:gson:2.15.0")

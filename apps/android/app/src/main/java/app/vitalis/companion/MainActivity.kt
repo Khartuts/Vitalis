@@ -28,6 +28,7 @@ import app.vitalis.companion.samsung.SamsungSource
 import app.vitalis.companion.sync.Pairing
 import app.vitalis.companion.sync.SyncRepository
 import app.vitalis.companion.sync.SyncWorker
+import app.vitalis.companion.web.WebAppActivity
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
 import kotlinx.coroutines.launch
@@ -138,6 +139,14 @@ fun CompanionScreen(activity: ComponentActivity) {
                 else -> Text("Health Connect is not available on this device.", color = Warn, fontSize = 13.sp)
             }
             Text("In Samsung Health → Settings → Health Connect, allow Samsung Health to share data with Health Connect.", color = Fg2, fontSize = 12.sp)
+        }
+
+        if (BuildConfig.HAS_ENGINE) {
+            Section("VITALIS on this phone") {
+                Text("The full analysis — overview, sleep, recovery, stress, heart, activity, trends and your journal — " +
+                    "computed on this phone from Health Connect, encrypted in app storage. Works without the PC.", color = Fg2, fontSize = 12.sp)
+                Button(enabled = granted.isNotEmpty(), onClick = { ctx.startActivity(Intent(ctx, WebAppActivity::class.java)) }) { Text("Open VITALIS") }
+            }
         }
 
         Section(if (paired) "Paired with ${repo.pairing()?.name ?: "desktop"}" else "Pair with your PC") {

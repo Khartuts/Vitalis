@@ -74,7 +74,10 @@ class SyncRepository(private val context: Context) {
         return SyncClient(p.hosts, p.port, p.fp)
     }
 
-    private fun payload(records: List<JsonObject>, deletions: List<String>, seq: Int, cursor: String): String = buildJsonObject {
+    private fun payload(records: List<JsonObject>, deletions: List<String>, seq: Int, cursor: String): String =
+        payloadObject(records, deletions, seq, cursor).toString()
+
+    fun payloadObject(records: List<JsonObject>, deletions: List<String>, seq: Int, cursor: String): JsonObject = buildJsonObject {
         put("schema", "vitalis.sync.v1")
         put("batch_id", UUID.randomUUID().toString())
         put("source", "health_connect")
@@ -84,7 +87,7 @@ class SyncRepository(private val context: Context) {
         putJsonObject("device") { put("manufacturer", Build.MANUFACTURER); put("model", Build.MODEL); put("android", Build.VERSION.SDK_INT) }
         put("records", JsonArray(records))
         putJsonArray("deletions") { deletions.forEach { id -> add(buildJsonObject { put("id", id) }) } }
-    }.toString()
+    }
 
     // ------------------------------------------------------------------------------------------ collection
     /**
@@ -93,7 +96,15 @@ class SyncRepository(private val context: Context) {
      * the oldest record of each type (the desktop recognizes records it already has, so this is safe to repeat).
      */
     private suspend fun collect(full: Boolean, sinceDays: Long?, deliver: suspend (records: List<JsonObject>, deletions: List<String>, cursor: String) -> Unit,
-                                progress: (String) -> Unit): SyncCounts {
+                                progress: (String) -> Unit): SyncCounts = collectWithCursors("", full, sinceDays, deliver, progress)
+
+    /**
+     * Same as [collect], with its own change tokens: `cursorPrefix` separates the phone's own engine ("local_") from the
+     * desktop sync (""), so each receives every change exactly once.
+     */
+    suspend fun collectWithCursors(cursorPrefix: String, full: Boolean, sinceDays: Long?,
+                                   deliver: suspend (records: List<JsonObject>, deletions: List<String>, cursor: String) -> Unit,
+                                   progress: (String) -> Unit): SyncCounts {
         val granted = hc.granted()
         val zone = ZoneId.systemDefault()
         val now = Instant.now()
@@ -106,7 +117,7 @@ class SyncRepository(private val context: Context) {
             if (spec.permission !in granted || !hc.featureAvailable(spec)) continue
             if (spec.name in HealthConnectSource.AGGREGATED) continue
             counts.putIfAbsent(spec.label, 0)
-            val tokenKey = "chg_${spec.name}"
+            val tokenKey = "${cursorPrefix}chg_${spec.name}"
             val existing = if (full) null else store.get(tokenKey)
             if (existing == null) {
                 val newToken = hc.changesToken(spec) // taken before reading so nothing between read and token is lost
@@ -138,7 +149,7 @@ class SyncRepository(private val context: Context) {
             }
         }
         // De-duplicated activity totals. Incremental: re-read from (last end − 2 days); otherwise from the oldest record.
-        val lastAggEnd = if (full || sinceDays != null) null else store.get("agg_end")?.let { Instant.parse(it) }
+        val lastAggEnd = if (full || sinceDays != null) null else store.get("${cursorPrefix}agg_end")?.let { Instant.parse(it) }
         val aggStart = when {
             sinceDays != null -> now.minus(Duration.ofDays(sinceDays))
             lastAggEnd != null -> lastAggEnd.minus(Duration.ofDays(2))
@@ -153,7 +164,7 @@ class SyncRepository(private val context: Context) {
                 for (part in chunk(agg)) { deliver(part, emptyList(), "aggregates"); counts["Activity totals"] = counts.getValue("Activity totals") + part.size }
             }
         }
-        if (sinceDays == null) store.put("agg_end", now.toString())
+        if (sinceDays == null) store.put("${cursorPrefix}agg_end", now.toString())
         return counts
     }
 

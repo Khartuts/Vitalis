@@ -12,6 +12,8 @@ on:
   push:
     paths: # the wheels, the app and the engine it bundles
       - "apps/android/**"
+      - "apps/desktop/src/**"
+      - "apps/desktop/android/**"
       - "services/engine/vitalis_engine/**"
       - ".github/workflows/android-wheels.yml"
 
@@ -113,6 +115,14 @@ jobs:
         with: { distribution: temurin, java-version: "21" }
       - uses: actions/setup-python@v5
         with: { python-version: "3.10" } # Chaquopy's build Python must match the app's Python
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - name: Phone screens (the desktop app's web build for Android)
+        working-directory: apps/desktop
+        run: |
+          npm ci
+          npm run build:android
+          ls dist-android
       - name: Android SDK packages (runner's preinstalled SDK)
         run: |
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
@@ -140,8 +150,8 @@ jobs:
           disable-animations: true
           working-directory: apps/android
           script: |
-            ./gradlew --no-daemon -Pvitalis.engine=true -Pvitalis.abis=x86_64 :app:connectedDebugAndroidTest || (adb logcat -d -s VitalisEngineTest python.stderr python.stdout AndroidRuntime TestRunner > "$RUNNER_TEMP/logcat.txt"; exit 1)
-            adb logcat -d -s VitalisEngineTest python.stderr python.stdout > "$RUNNER_TEMP/logcat.txt" || true
+            ./gradlew --no-daemon -Pvitalis.engine=true -Pvitalis.abis=x86_64 :app:connectedDebugAndroidTest || (adb logcat -d -s VitalisEngineTest python.stderr python.stdout AndroidRuntime TestRunner chromium > "$RUNNER_TEMP/logcat.txt"; exit 1)
+            adb logcat -d -s VitalisEngineTest python.stderr python.stdout chromium > "$RUNNER_TEMP/logcat.txt" || true
       - if: always()
         run: cat "$RUNNER_TEMP/logcat.txt" 2>/dev/null | tail -80 || true
       - uses: actions/upload-artifact@v4

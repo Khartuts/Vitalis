@@ -86,6 +86,13 @@
             </intent-filter>
         </activity-alias>
 
+        <!-- Full VITALIS screens (engine builds only; not exported). -->
+        <activity
+            android:name=".web.WebAppActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:label="VITALIS" />
+
         <activity
             android:name="com.journeyapps.barcodescanner.CaptureActivity"
             android:screenOrientation="fullSensor"

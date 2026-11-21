@@ -21,7 +21,7 @@ class EngineOnDeviceTest {
     private val tag = "VitalisEngineTest"
 
     @Test
-    fun engineRunsOnTheDeviceWithAnEncryptedDatabase() = runBlocking {
+    fun engineRunsOnTheDeviceWithAnEncryptedDatabase(): Unit = runBlocking {
         assertTrue("built without -Pvitalis.engine=true", EngineHost.AVAILABLE)
         val ctx = InstrumentationRegistry.getInstrumentation().targetContext
         val db = File(ctx.filesDir, "engine-test.db").apply { delete() }
