@@ -87,6 +87,12 @@ class WebAppActivity : ComponentActivity() {
             }
         }
         web.loadUrl(START_URL)
+        // Back steps through the screens (hash routes) before leaving VITALIS.
+        onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (web.canGoBack()) web.goBack() else { isEnabled = false; onBackPressedDispatcher.onBackPressed() }
+            }
+        })
         scope.launch { startEngineAndImport() }
     }
 

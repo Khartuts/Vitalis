@@ -51,8 +51,8 @@ Legend: ✅ Implemented · 🧪 Tested (automated, in this environment) · 🌐 
 ## Phone app (full VITALIS on Android) — in progress
 | Step | Content | State |
 |---|---|---|
-| A | Engine on the phone: Android builds of pydantic_core + sqlcipher3, Chaquopy integration, `EngineHost`, on-device test on an emulator | in CI |
-| B | Phone screens: Overview + daily check-in, Sleep, Recovery, Stress, Cardio, Activity, Trends with Explain buttons, fed directly from Health Connect | next |
+| A | Engine on the phone: Android builds of pydantic_core + sqlcipher3, Chaquopy integration, `EngineHost`, on-device test on an emulator | ✅ 🧪 (emulator) |
+| B | Phone screens: Overview + daily check-in, Sleep, Recovery, Stress, Cardio, Activity, Trends with Explain buttons, fed directly from Health Connect | ✅ preview 🧪 (emulator); physical phone ⏳ |
 | C | Journal and experiments synced both ways with the PC | planned |
 | D | AI analyst (consent preview) and reports on the phone | planned |
 

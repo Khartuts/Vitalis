@@ -31,6 +31,17 @@
   compiled**. It uses reflection for undocumented field names. Expect import/name fixes on first build.
 * Developer mode is for personal testing; distributing the app requires Samsung partnership approval.
 
+## Phone app (preview, v0.3.0)
+* Full VITALIS on the phone runs the desktop's engine on Python 3.10 with older scientific packages (the newest with
+  Android builds); the engine is tested on that set in CI. Verified on an Android 14 **emulator** only — not yet on a
+  physical phone: speed with years of real heart-rate data, memory use and battery are unknown.
+* First version: Overview, Sleep, Recovery, Stress, Cardio, Activity, Trends, Journal and Sources. Not yet on the
+  phone: Correlation Lab and experiments, AI analyst, reports, journal sync with the PC (planned steps C–D).
+* The APK is large (~120 MB, arm64 only) because it contains Python, NumPy, pandas, SciPy and statsmodels.
+* It replaces the companion app (same app id); builds are debug-signed with a key that changes per build, so
+  installing a new build requires uninstalling the old one (the phone's VITALIS database is deleted with it; the
+  data comes back from Health Connect on the next import).
+
 ## Android companion
 * Not run on a physical phone in this build (no device attached). Health Connect behaviour, permission UI, background
   WorkManager scheduling and rate limits are unverified on hardware.

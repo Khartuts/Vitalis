@@ -68,6 +68,12 @@ Requirements: Android 9+ (Health Connect), Samsung Health ≥ 6.30.2 for the opt
 9. *Re-read all history* reads everything again from the oldest record — use it after granting "Access past data"
    or after Samsung Health starts sharing. Records the PC already has are recognized and skipped.
 
+**Full VITALIS on the phone (preview).** `VITALIS-Phone-<version>-preview-arm64.apk` is the companion plus the
+complete analysis running on the phone (no PC needed). Uninstall VITALIS Companion first, install the preview APK,
+grant the Health Connect permissions, then tap **Open VITALIS**. The first opening imports your Health Connect history
+(this can take a few minutes); later openings import only what is new. Pair with the PC again if you also use the
+desktop app.
+
 **Getting older history.** The companion can only read what Samsung Health has written into Health Connect. If the
 probe's "oldest" date is recent although Samsung Health shows older data, that history is not in Health Connect.
 Bring it over with Samsung Health's own export: Samsung Health → ⋮ / menu → Settings → *Download personal data* →

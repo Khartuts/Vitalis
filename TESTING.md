@@ -8,11 +8,11 @@ listed as "not run" was run.
 
 | Suite | Command | Result |
 |---|---|---|
-| Engine (pytest) | `cd services/engine && .venv/bin/pytest -q` | **51 passed** (v0.2.0) |
-| Engine on the Android-compatible stack (Python 3.10, NumPy 1.23, pandas 2.1, SciPy 1.8, statsmodels 0.14, scikit-learn 1.3) | `PYTHONPATH=. python3.10 -m pytest` with `requirements.android-compat.txt` | **51 passed** (v0.2.0) |
+| Engine (pytest) | `cd services/engine && .venv/bin/pytest -q` | **53 passed** (v0.3.0) |
+| Engine on the Android-compatible stack (Python 3.10, NumPy 1.23, pandas 2.1, SciPy 1.8, statsmodels 0.14, scikit-learn 1.3) | `PYTHONPATH=. python3.10 -m pytest` with `requirements.android-compat.txt` | **52 passed** locally (v0.3.0; CI job `engine-tests-android-stack`) |
 | Desktop unit (Vitest) | `cd apps/desktop && npx vitest run` | **17 passed** (v0.2.0) |
-| Desktop end-to-end (real Electron + Playwright, Xvfb) | `xvfb-run -a node tests/e2e/app.e2e.mjs` | **24/24 steps passed** (v0.2.0, incl. an Explain panel on every analysis screen), 0 console errors |
-| Android unit (JUnit) | `cd apps/android && ./gradlew :app:testDebugUnitTest` | **6 passed** (v0.1.1) |
+| Desktop end-to-end (real Electron + Playwright, Xvfb) | `xvfb-run -a node tests/e2e/app.e2e.mjs` | **25/25 steps passed** (v0.3.0, incl. an Explain panel on every analysis screen and the phone-width layout), 0 console errors |
+| Android unit (JUnit) | `cd apps/android && ./gradlew :app:testDebugUnitTest` | **6 passed** (v0.3.0) |
 | Android lint | `./gradlew :app:lintDebug` | 0 errors (warnings: newer versions available; intentional custom TrustManager for pinning) |
 | Engine smoke (stdio protocol) | `python scripts/smoke_engine.py <python>` | passed with the dev interpreter |
 | Windows bundle under Wine 9 | Windows CPython 3.12.10 + SQLCipher 4.20 + Pydantic + AES-GCM | **passed** |
@@ -33,6 +33,16 @@ listed as "not run" was run.
 | Android unit tests, lint, debug + release APKs | ubuntu-24.04 | passed |
 
 `windows-2022` is Windows Server 2022, not a Windows 11 desktop; see "Must be performed…" below for what remains.
+
+### Phone app on an Android emulator (job `phone-app`, Android 14 x86_64, v0.3.0)
+
+| Test | What it checks | Result |
+|---|---|---|
+| Android builds of `pydantic_core` 2.50.5 and `sqlcipher3` 0.6.5 (arm64-v8a, x86_64) | Chaquopy build-wheel, Python 3.10 | built |
+| `EngineOnDeviceTest` | real engine in the app: encrypted DB (no plaintext header, wrong key refused), 60 days of demo data + recompute, overview, explain.data, correlation, no LAN server | **passed** — open 2.7 s, demo.load 3.9 s, overview 0.1 s |
+| `WebAppOnDeviceTest` | the bundled phone screens in the WebView, through the origin-restricted bridge: empty state → one imported night → dashboard → Sleep Lab | **passed** |
+
+Not run: a physical phone (performance with years of real data, Health Connect permission screens, battery), Samsung SDK.
 
 ## What the tests cover (requirement → test)
 

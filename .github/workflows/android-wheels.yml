@@ -8,14 +8,7 @@
 name: android-wheels
 on:
   workflow_dispatch:
-  workflow_call:
-  push:
-    paths: # the wheels, the app and the engine it bundles
-      - "apps/android/**"
-      - "apps/desktop/src/**"
-      - "apps/desktop/android/**"
-      - "services/engine/vitalis_engine/**"
-      - ".github/workflows/android-wheels.yml"
+  workflow_call: # run as part of build-and-test (job phone-app), so releases include the phone APK
 
 permissions:
   contents: read

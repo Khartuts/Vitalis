@@ -155,9 +155,13 @@ jobs:
           path: apps/android/app/build/outputs/apk/**/*.apk
           if-no-files-found: error
 
+  # Android builds of the engine's native packages, the full phone app, and its on-device tests (emulator).
+  phone-app:
+    uses: ./.github/workflows/android-wheels.yml
+
   release:
     if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
-    needs: [desktop-and-installer, android]
+    needs: [desktop-and-installer, android, phone-app]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -176,6 +180,7 @@ jobs:
           find dist -name "*-portable.zip" -exec cp {} out/ \;
           cp "$(find dist -name 'app-debug.apk' | head -1)" "out/VITALIS-Companion-${TAG}-debug.apk"
           cp "$(find dist -name 'app-release-unsigned.apk' | head -1)" "out/VITALIS-Companion-${TAG}-release-unsigned.apk"
+          cp "$(find dist -name 'VITALIS-Companion-engine-preview-arm64.apk' | head -1)" "out/VITALIS-Phone-${TAG}-preview-arm64.apk"
           (cd out && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt)
       - uses: softprops/action-gh-release@v2
         with:
@@ -190,6 +195,8 @@ jobs:
             * `VITALIS-*-win-x64-portable.zip` — the same app without an installer: extract the whole ZIP, run `VITALIS.exe`.
             * `VITALIS-Companion-*-debug.apk` — Android companion, debug-signed, sideloadable.
             * `VITALIS-Companion-*-release-unsigned.apk` — release build; sign it with your own key.
+            * `VITALIS-Phone-*-preview-arm64.apk` — PREVIEW: the companion plus full VITALIS on the phone (on-phone
+              engine, ~120 MB). Replaces the companion (uninstall it first). Tested on an Android 14 emulator only.
             * `SHA256SUMS.txt` — checksums.
 
             Built and tested by the build-and-test workflow on GitHub-hosted runners: engine tests on Linux and Windows;
