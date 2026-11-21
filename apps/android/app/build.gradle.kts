@@ -12,6 +12,15 @@ plugins {
 val samsungAar = file("libs/samsung-health-data-api.aar")
 val hasSamsungSdk = samsungAar.exists()
 
+// On-phone engine: the desktop's Python analytics engine running in the app through Chaquopy (Python 3.10).
+// Off by default so the plain companion builds anywhere. CI enables it with -Pvitalis.engine=true after building the
+// two Android wheels it needs (see python-wheels/README.md); -Pvitalis.abis picks the ABIs (default arm64-v8a).
+val withEngine = providers.gradleProperty("vitalis.engine").orNull?.toBoolean() ?: false
+val engineAbis = (providers.gradleProperty("vitalis.abis").orNull ?: "arm64-v8a").split(",").map { it.trim() }
+val engineSources = rootProject.file("../../services/engine/vitalis_engine")
+val stagedPython = layout.buildDirectory.dir("generated/vitalis-python")
+if (withEngine) apply(plugin = "com.chaquo.python")
+
 // Optional release signing from keystore.properties (never committed). Without it, release builds are unsigned.
 val keystoreProps = Properties().apply {
     val f = rootProject.file("keystore.properties")
@@ -29,6 +38,8 @@ android {
         versionCode = 2
         versionName = "0.1.1"
         buildConfigField("boolean", "HAS_SAMSUNG_SDK", hasSamsungSdk.toString())
+        buildConfigField("boolean", "HAS_ENGINE", withEngine.toString())
+        if (withEngine) ndk { abiFilters += engineAbis }
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -53,6 +64,7 @@ android {
 
     sourceSets {
         getByName("main").java.srcDir(if (hasSamsungSdk) "src/samsung/java" else "src/samsungStub/java")
+        getByName("main").java.srcDir(if (withEngine) "src/engine/java" else "src/engineStub/java")
     }
 
     compileOptions {
@@ -68,6 +80,25 @@ android {
 }
 
 kotlin { compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) } }
+
+if (withEngine) {
+    // The engine package is copied (without caches) so only vitalis_engine — not tests or virtualenvs — is bundled.
+    val stageEngine = tasks.register<Sync>("stageVitalisEngine") {
+        from(engineSources) { exclude("**/__pycache__/**", "**/*.pyc") }
+        into(stagedPython.map { it.dir("vitalis_engine") })
+    }
+    extensions.configure<com.chaquo.python.ChaquopyExtension>("chaquopy") {
+        defaultConfig {
+            version = "3.10"
+            pip {
+                options("--find-links", rootProject.file("python-wheels/dist").absolutePath)
+                install("-r", rootProject.file("python-wheels/requirements-phone.txt").absolutePath)
+            }
+        }
+        sourceSets.getByName("main").srcDir(stagedPython)
+    }
+    tasks.matching { it.name.startsWith("merge") && it.name.endsWith("PythonSources") }.configureEach { dependsOn(stageEngine) }
+}
 
 dependencies {
     val composeBom = platform("androidx.compose:compose-bom:2026.06.00")
@@ -88,5 +119,8 @@ dependencies {
         implementation("com.google.code.gson:gson:2.15.0")
     }
     testImplementation("junit:junit:4.13.2")
+    androidTestImplementation("androidx.test.ext:junit:1.3.0")
+    androidTestImplementation("androidx.test:runner:1.7.0")
+    androidTestImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
 }

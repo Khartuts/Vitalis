@@ -26,7 +26,7 @@ jobs:
         package: [pydantic-core, sqlcipher3]
         abi: [arm64-v8a, x86_64] # phones / emulator
     env:
-      CHAQUOPY_REF: 502ad46fe81532150b74fb6d299c4d85f5c61b03
+      CHAQUOPY_REF: 1f63c93d8beaf7062fbe51888ab9235475df3bb8 # release 17.2.0 (same as the app's Gradle plugin)
       TARGET_VERSION: 3.10.22-0
     steps:
       - uses: actions/checkout@v4
@@ -74,10 +74,72 @@ jobs:
           # The tool's compiler wrapper only keeps -I/-L paths inside the Chaquopy checkout, so the recipes
           # are staged under packages/ (building from an outside path strips the OpenSSL and libpython paths).
           cp -r "$GITHUB_WORKSPACE/apps/android/python-wheels/recipes/${{ matrix.package }}" packages/
+          export PATH="$RUNNER_TEMP/bw/bin:$PATH" # the tool calls `wheel pack` from its own environment
           "$RUNNER_TEMP/bw/bin/python" build-wheel.py --python 3.10 --abi ${{ matrix.abi }} ${{ matrix.package }}
           find dist -name "*.whl" -exec ls -la {} \;
       - uses: actions/upload-artifact@v4
         with:
           name: wheel-${{ matrix.package }}-${{ matrix.abi }}
           path: chaquopy/server/pypi/dist/**/*.whl
+          if-no-files-found: error
+
+  # The engine-enabled app on an Android emulator: the real engine, encrypted DB, demo data, overview.
+  phone-engine:
+    needs: wheel
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: wheel-*
+          path: apps/android/python-wheels/dist
+          merge-multiple: true
+      - run: find apps/android/python-wheels/dist -name "*.whl" | sort
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: "21" }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.10" } # Chaquopy's build Python must match the app's Python
+      - name: Android SDK packages (runner's preinstalled SDK)
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0"
+      - name: Build the engine-enabled APKs (phone arm64 + emulator x86_64 test)
+        working-directory: apps/android
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon -Pvitalis.engine=true -Pvitalis.abis=arm64-v8a :app:assembleDebug
+          mkdir -p "$RUNNER_TEMP/apk" && cp app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/apk/VITALIS-Companion-engine-preview-arm64.apk"
+          ls -la "$RUNNER_TEMP/apk"
+          ./gradlew --no-daemon -Pvitalis.engine=true -Pvitalis.abis=x86_64 :app:assembleDebug :app:assembleDebugAndroidTest
+      - name: Enable KVM for the emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: On-device engine test (Android 14 emulator, x86_64)
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          ram-size: 4096M
+          disable-animations: true
+          working-directory: apps/android
+          script: |
+            ./gradlew --no-daemon -Pvitalis.engine=true -Pvitalis.abis=x86_64 :app:connectedDebugAndroidTest || (adb logcat -d -s VitalisEngineTest python.stderr python.stdout AndroidRuntime TestRunner > "$RUNNER_TEMP/logcat.txt"; exit 1)
+            adb logcat -d -s VitalisEngineTest python.stderr python.stdout > "$RUNNER_TEMP/logcat.txt" || true
+      - if: always()
+        run: cat "$RUNNER_TEMP/logcat.txt" 2>/dev/null | tail -80 || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phone-engine-test-report
+          path: |
+            apps/android/app/build/reports/androidTests/
+            ${{ runner.temp }}/logcat.txt
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vitalis-companion-engine-preview-apk
+          path: ${{ runner.temp }}/apk/*.apk
           if-no-files-found: error

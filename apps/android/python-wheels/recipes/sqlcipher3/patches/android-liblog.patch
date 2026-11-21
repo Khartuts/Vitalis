@@ -1,0 +1,12 @@
+--- src-original/setup.py	2026-11-21 17:55:45.603778257 +0000
++++ src/setup.py	2026-11-21 17:55:45.630805561 +0000
+@@ -165,7 +165,8 @@
+         extra_link_args.append('libcrypto.lib')
+     else:
+         # Include math library, required for fts5, and crypto.
+-        extra_link_args.extend(['-lm', '-lcrypto'])
++        # Chaquopy/Android: SQLCipher logs through Android's liblog.
++        extra_link_args.extend(['-lm', '-lcrypto', '-llog'])
+ 
+     module = Extension(
+         name='sqlcipher3._sqlite3',
