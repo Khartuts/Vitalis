@@ -48,6 +48,14 @@ Legend: ✅ Implemented · 🧪 Tested (automated, in this environment) · 🌐 
 | Windows code signing | ⏳ | needs certificate 🌐 |
 | ECG / glucose analytics, GPS routes | ⏳ (by design not in v1) | |
 
+## Phone app (full VITALIS on Android) — in progress
+| Step | Content | State |
+|---|---|---|
+| A | Engine on the phone: Android builds of pydantic_core + sqlcipher3, Chaquopy integration, `EngineHost`, on-device test on an emulator | in CI |
+| B | Phone screens: Overview + daily check-in, Sleep, Recovery, Stress, Cardio, Activity, Trends with Explain buttons, fed directly from Health Connect | next |
+| C | Journal and experiments synced both ways with the PC | planned |
+| D | AI analyst (consent preview) and reports on the phone | planned |
+
 ## Next steps (in order)
 1. ~~Push to GitHub and verify the installer on a real Windows runner~~ — done (run 44783780670). Remaining: a person
    installs it on a Windows 11 desktop (interactive installer, SmartScreen, firewall prompt, real phone sync).
@@ -62,3 +70,9 @@ See ARCHITECTURE.md §11 (D1–D8). Added during implementation:
 * D10 — Sleep sessions store the end offset (migration 2) so wake times are DST-correct.
 * D11 — AndroidX pinned to versions supporting compileSdk 36 / AGP 8.13 (Compose BOM 2026.06.00, OkHttp 5.4.0).
 * D12 — Windows runtime = official CPython NuGet build with packages in its own site-packages; engine runs with `-I`.
+* D13 — Full app on the phone runs the **same Python engine** in-process via Chaquopy (Python 3.10: the newest Python
+  with Android builds of SciPy/statsmodels). The engine stays compatible with that package set (CI job
+  `engine-tests-android-stack`); `pydantic_core` and `sqlcipher3` are built for Android in CI from pinned recipes
+  (`apps/android/python-wheels`, workflow `android-wheels`). The phone uses `vitalis_engine.embedded` (same JSON-line
+  protocol over queues) and does not host the LAN sync server. Alternatives rejected: re-implementing analytics in
+  Kotlin (two engines to keep identical), phone as a thin viewer of the PC (needs the PC on the same Wi-Fi).
