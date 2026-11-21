@@ -836,18 +836,26 @@ class SyncStartP(P):
     port: int = Field(47821, ge=1024, le=65535)
 
 
+def _lan_sync(engine: Engine):
+    if engine.sync is None:
+        raise RpcError("not_available", "The phone-sync server runs on the desktop app only.")
+    return engine.sync
+
+
 @method("sync.start", SyncStartP)
 def sync_start(engine: Engine, p: SyncStartP):
-    return engine.sync.start(p.port)
+    return _lan_sync(engine).start(p.port)
 
 
 @method("sync.stop")
 def sync_stop(engine: Engine):
-    return engine.sync.stop()
+    return _lan_sync(engine).stop()
 
 
 @method("sync.status")
 def sync_status(engine: Engine):
+    if engine.sync is None:
+        return {"running": False, "available": False, "port": None, "hosts": [], "fingerprint": None, "devices": []}
     return engine.sync.status()
 
 
@@ -857,13 +865,13 @@ class PairP(P):
 
 @method("sync.pairing", PairP)
 def sync_pairing(engine: Engine, p: PairP):
-    return engine.sync.pairing_payload(p.desktop_name)
+    return _lan_sync(engine).pairing_payload(p.desktop_name)
 
 
 @method("sync.revoke", IdP)
 def sync_revoke(engine: Engine, p: IdP):
     engine.db.execute("UPDATE sync_devices SET revoked_at=? WHERE id=?", (utcnow(), p.id))
-    return engine.sync.status()
+    return sync_status(engine)
 
 
 @method("sync.rotate_file_key")

@@ -71,8 +71,10 @@ jobs:
       - name: Build ${{ matrix.package }} for ${{ matrix.abi }}
         working-directory: chaquopy/server/pypi
         run: |
-          "$RUNNER_TEMP/bw/bin/python" build-wheel.py --python 3.10 --abi ${{ matrix.abi }} \
-            "$GITHUB_WORKSPACE/apps/android/python-wheels/recipes/${{ matrix.package }}"
+          # The tool's compiler wrapper only keeps -I/-L paths inside the Chaquopy checkout, so the recipes
+          # are staged under packages/ (building from an outside path strips the OpenSSL and libpython paths).
+          cp -r "$GITHUB_WORKSPACE/apps/android/python-wheels/recipes/${{ matrix.package }}" packages/
+          "$RUNNER_TEMP/bw/bin/python" build-wheel.py --python 3.10 --abi ${{ matrix.abi }} ${{ matrix.package }}
           find dist -name "*.whl" -exec ls -la {} \;
       - uses: actions/upload-artifact@v4
         with:

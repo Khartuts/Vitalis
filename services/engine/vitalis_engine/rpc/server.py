@@ -144,8 +144,11 @@ def serve(stdin=None, stdout=None) -> int:
     from ..journal import ensure_builtins
     ensure_builtins(db)
     engine = Engine(db, stdout, bool(db.get_pref("is_demo", False)))
-    from ..sync.server import SyncService
-    engine.sync = SyncService(db, lambda ev: methods.on_sync_event(engine, ev))
+    try:
+        from ..sync.server import SyncService
+    except ImportError:  # Android: the phone connects to the PC and does not host the LAN sync server
+        SyncService = None
+    engine.sync = SyncService(db, lambda ev: methods.on_sync_event(engine, ev)) if SyncService else None
     engine.send({"type": "ready", "version": __version__, "schema_version": db.schema_version(),
                  "demo": engine.demo})
     pool = ThreadPoolExecutor(max_workers=4, thread_name_prefix="rpc")
