@@ -1,0 +1,15 @@
+# pydantic-core for Android (Chaquopy, Python 3.10). Matches pydantic 2.14.4 used by the desktop engine.
+package:
+  name: pydantic_core
+  version: "2.50.5"
+
+build:
+  number: 0
+  script_env:
+    # pydantic-core is not an abi3 module, so PyO3 cannot use Chaquopy's interpreter-less abi3 mode.
+    # This file (written by the CI job) describes the Android CPython 3.10 target explicitly.
+    - PYO3_CONFIG_FILE=/tmp/pyo3-android-cp310.cfg
+
+requirements:
+  build:
+    - rust

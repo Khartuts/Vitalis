@@ -1,0 +1,12 @@
+# sqlcipher3 (SQLCipher 4 DB-API module, vendored amalgamation) for Android (Chaquopy, Python 3.10).
+# Links against the OpenSSL libcrypto shipped with Chaquopy's Python, so no extra native library is bundled.
+package:
+  name: sqlcipher3
+  version: "0.6.5"
+
+build:
+  number: 0
+
+requirements:
+  host:
+    - openssl

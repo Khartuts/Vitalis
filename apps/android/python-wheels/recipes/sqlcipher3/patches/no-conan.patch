@@ -1,0 +1,10 @@
+--- src-original/pyproject.toml
++++ src/pyproject.toml
+@@ -1,7 +1,6 @@
+ [build-system]
+ requires = [
+     "setuptools>=69",
+-    "conan>=2.0",
+     "wheel"
+ ]
+ build-backend = "setuptools.build_meta"
