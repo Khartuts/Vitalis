@@ -16,10 +16,11 @@ export default function Settings() {
       <div data-testid="settings-page">
         <PageHeader title="Data Sources & Settings" subtitle="Everything is stored on this phone, encrypted." />
         <Tabs value={tab === "profile" ? "phone" : tab} onChange={setTab} tabs={[{ id: "phone", label: "This phone" }, { id: "pc", label: "Desktop sync" },
-          { id: "prefs", label: "Preferences" }, { id: "import", label: "Imports" }, { id: "sources", label: "Sources & quality" }, { id: "privacy", label: "Privacy" }]}>
+          { id: "prefs", label: "Preferences" }, { id: "ai", label: "AI" }, { id: "import", label: "Imports" }, { id: "sources", label: "Sources & quality" }, { id: "privacy", label: "Privacy" }]}>
           <TabPanel value="phone"><PhoneDataTab /></TabPanel>
           <TabPanel value="pc"><PhoneDesktopSyncTab /></TabPanel>
           <TabPanel value="prefs"><Grid cols={2}><PreferencesOnly /><AppearanceCard /></Grid></TabPanel>
+          <TabPanel value="ai"><AiTab /></TabPanel>
           <TabPanel value="import"><ImportTab /></TabPanel>
           <TabPanel value="sources"><SourcesTab /></TabPanel>
           <TabPanel value="privacy"><PhonePrivacyTab /></TabPanel>
@@ -283,7 +284,7 @@ function AiTab() {
   const cg = s.data.chatgpt;
   return (
     <Grid cols={2}>
-      <Card title="ChatGPT plan (Sign in with ChatGPT)" subtitle="Use your ChatGPT Plus/Pro plan for the analyst — no API key needed">
+      {!IS_ANDROID && <Card title="ChatGPT plan (Sign in with ChatGPT)" subtitle="Use your ChatGPT Plus/Pro plan for the analyst — no API key needed">
         <p className="text-xs text-fg2">VITALIS uses OpenAI's documented flow for open-source, locally run apps: your browser opens OpenAI's sign-in, and you
           approve VITALIS to make eligible Responses API requests on your plan. This does <b>not</b> give VITALIS access to your ChatGPT conversations,
           memories, files or ChatGPT Health records. Tokens are stored encrypted by Windows and never shown to the app's interface.</p>
@@ -301,20 +302,20 @@ function AiTab() {
           {!cg.connected && <Button size="sm" variant="ghost" onClick={() => invoke("ai:siwc:cancel")}>Cancel pending sign-in</Button>}
         </div>
         <Note>ChatGPT Plus has a five-hour usage limit shared across all apps using your plan. To disconnect fully, you can also remove VITALIS in ChatGPT Settings.</Note>
-      </Card>
+      </Card>}
       <Card title="OpenAI API key" subtitle="Billed to your OpenAI API account (separate from a ChatGPT subscription)">
         <div className="flex gap-2"><input type="password" className={inputCls} placeholder={s.data.openai_api.configured ? "•••••••• (stored encrypted)" : "sk-…"} value={key} onChange={(e) => setKey(e.target.value)} autoComplete="off" />
           <Button variant="primary" disabled={!key.startsWith("sk-")} onClick={() => run(async () => { await invoke("ai:apikey:set", { apiKey: key.trim() }); setKey(""); refresh(); }, "Key saved (encrypted).")}><KeyRound size={13} />Save</Button>
           {s.data.openai_api.configured && <Button variant="danger" onClick={() => run(async () => { await invoke("ai:apikey:clear"); refresh(); }, "Key removed.")}>Remove</Button>}</div>
         <Button size="sm" variant="ghost" onClick={() => openExternal("https://platform.openai.com/api-keys")}>Create an API key<ExternalLink size={11} /></Button>
       </Card>
-      <Card title="Local model (optional, on-device)" subtitle="Any OpenAI-compatible server on this PC: Ollama, LM Studio, llama.cpp">
+      {!IS_ANDROID && <Card title="Local model (optional, on-device)" subtitle="Any OpenAI-compatible server on this PC: Ollama, LM Studio, llama.cpp">
         <Field label="Base URL (loopback only)"><input className={inputCls} value={local ?? s.data.local.baseUrl} onChange={(e) => setLocal(e.target.value)} /></Field>
         <div className="mt-2 flex items-center gap-3"><Switch checked={!!s.data.local.enabled} label="Enabled"
           onChange={(v) => run(async () => { await invoke("ai:local:set", { baseUrl: local ?? s.data.local.baseUrl, enabled: v }); refresh(); })} />
           <Button size="sm" onClick={() => run(async () => { await invoke("ai:local:set", { baseUrl: local ?? s.data.local.baseUrl, enabled: !!s.data.local.enabled }); refresh(); }, "Saved.")}>Save URL</Button></div>
         <Note>With a local model nothing leaves your PC. Tool use requires a model that supports function calling (e.g. recent Qwen or Llama instruct models). Answer quality varies by model.</Note>
-      </Card>
+      </Card>}
       <Card title="How the analyst works">
         <ul className="list-disc space-y-1 pl-5 text-xs text-fg2">
           <li>The model never receives your database. It asks for specific summaries through read-only tools (validated arguments, max 400 days, no SQL/code).</li>

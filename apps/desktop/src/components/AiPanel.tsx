@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { IS_ANDROID } from "../lib/platform";
 import { AlertTriangle, ExternalLink, Plus, Send, ShieldAlert, Square, Wrench, X } from "lucide-react";
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { AiEvent, AiProvider, Evidence } from "@shared/contract";
@@ -21,7 +22,8 @@ export function AiPanel({ full = false, threadId: externalThread }: { full?: boo
   const qc = useQueryClient();
   const { chartContext, pendingQuestion, clearPending, toggleAi } = useUi();
   const status = useAiStatus();
-  const [provider, setProvider] = useState<AiProvider>(() => (localStorage.getItem("vitalis.ai.provider") as AiProvider) || "chatgpt");
+  const [provider, setProvider] = useState<AiProvider>(() =>
+    IS_ANDROID ? "openai_api" : (localStorage.getItem("vitalis.ai.provider") as AiProvider) || "chatgpt");
   const [model, setModel] = useState<string>(() => localStorage.getItem("vitalis.ai.model") || "");
   const [threadId, setThreadId] = useState<string | null>(externalThread ?? null);
   const [input, setInput] = useState("");
@@ -117,7 +119,7 @@ export function AiPanel({ full = false, threadId: externalThread }: { full?: boo
       </div>
       <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-2">
         <Select label="AI provider" value={provider} onChange={(v) => setProvider(v as AiProvider)} testId="ai-provider"
-          options={(["chatgpt", "openai_api", "local"] as AiProvider[]).map((p) => ({ value: p, label: `${PROVIDER_LABEL[p]}${available[p] ? "" : " (not set up)"}` }))} />
+          options={((IS_ANDROID ? ["openai_api"] : ["chatgpt", "openai_api", "local"]) as AiProvider[]).map((p) => ({ value: p, label: `${PROVIDER_LABEL[p]}${available[p] ? "" : " (not set up)"}` }))} />
         {available[provider] && (models.data?.length ? (
           <Select label="Model" value={model} onChange={setModel} options={models.data.map((m) => ({ value: m.id, label: m.label }))} testId="ai-model" />
         ) : models.isLoading ? <Spinner /> : models.error ? <span className="text-[11px] text-critical">{String((models.error as Error).message)}</span> : null)}

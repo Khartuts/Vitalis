@@ -3,7 +3,7 @@
 Local-only, deterministic health analytics over an encrypted SQLCipher database.
 """
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"
 
 # Algorithm versions are recorded with every stored result so that results can be
 # traced to the exact code that produced them (see ALGORITHMS.md).

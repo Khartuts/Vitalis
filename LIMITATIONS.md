@@ -44,9 +44,13 @@
 * Full VITALIS on the phone runs the desktop's engine on Python 3.10 with older scientific packages (the newest with
   Android builds); the engine is tested on that set in CI. Verified on an Android 14 **emulator** only — not yet on a
   physical phone: speed with years of real heart-rate data, memory use and battery are unknown.
-* On the phone: Overview, Sleep, Recovery, Stress, Cardio, Temperature, Activity, Trends, Journal and Settings
-  (Health Connect import, desktop sync, Samsung Health export import, preferences, appearance). Not yet on the
-  phone: Correlation Lab and experiments, AI analyst, reports, journal sync with the PC (planned steps C–D).
+* On the phone: Overview, Sleep, Recovery, Stress, Cardio, Temperature, Activity, Trends, Journal, AI analyst,
+  Reports and Settings. The Correlation Lab stays on the desktop (experiments created there sync to the phone).
+* The phone analyst supports an OpenAI API key only (Sign in with ChatGPT and local models are desktop-only). It was
+  tested on the emulator against a mock of the Responses API, not against the real service.
+* Phone reports: PDF through Android's print dialog ("Save as PDF"); JSON/CSV/chart images through the file-save
+  dialog.
+* Journal sync with the PC decides near-simultaneous edits by each device's clock (newer edit wins).
 * The APK is large (~120 MB, arm64 only) because it contains Python, NumPy, pandas, SciPy and statsmodels.
 * It replaces the companion app (same app id); builds are debug-signed with a key that changes per build, so
   installing a new build requires uninstalling the old one (the phone's VITALIS database is deleted with it; the

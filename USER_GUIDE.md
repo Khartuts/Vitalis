@@ -21,6 +21,13 @@ SmartThings routine.
 
 **Appearance**: Settings → Appearance offers seven dark and five light background colours.
 
+## Phone and PC together
+The phone app keeps its own encrypted copy of your data (from Health Connect). When paired with the PC, **Send to PC**
+(Settings → Desktop sync, or the hourly background sync) also exchanges the **journal and experiments both ways**:
+an entry made on either device appears on the other; if the same entry was changed on both, the newer change wins.
+On the phone the **AI analyst** uses an OpenAI API key (Settings → AI) with the same consent preview as on the PC, and
+**Reports** print to PDF through Android's print dialog.
+
 ## Explain buttons
 Every card on the analysis screens has an **Explain** button. It opens a built-in explanation that works offline:
 what the card shows, how it is calculated, how to read it and its limitations — plus **Your data**, which says how

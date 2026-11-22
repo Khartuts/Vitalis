@@ -86,6 +86,10 @@ class WebAppOnDeviceTest {
             waitFor(sc, 60_000, "the phone settings") { it.contains("Health Connect → this phone") && it.contains("data types allowed") }
             sc.onActivity { it.webViewForTest().evaluateJavascript("location.hash = '#/temperature'", null) }
             waitFor(sc, 60_000, "the Temperature screen") { it.contains("Tonight's bedroom temperature") && it.contains("°C") }
+            sc.onActivity { it.webViewForTest().evaluateJavascript("location.hash = '#/reports'", null) }
+            waitFor(sc, 60_000, "the Reports screen") { it.contains("Reports") && it.contains("PDF") }
+            sc.onActivity { it.webViewForTest().evaluateJavascript("location.hash = '#/ai'", null) }
+            waitFor(sc, 60_000, "the AI analyst screen") { it.contains("OpenAI API key") }
         }
     }
 }

@@ -8,11 +8,11 @@ listed as "not run" was run.
 
 | Suite | Command | Result |
 |---|---|---|
-| Engine (pytest) | `cd services/engine && .venv/bin/pytest -q` | **58 passed** (v0.4.0, incl. body/bedroom temperature) |
-| Engine on the Android-compatible stack (Python 3.10, NumPy 1.23, pandas 2.1, SciPy 1.8, statsmodels 0.14, scikit-learn 1.3) | `PYTHONPATH=. python3.10 -m pytest` with `requirements.android-compat.txt` | **58 passed** locally (v0.4.0; CI job `engine-tests-android-stack`) |
+| Engine (pytest) | `cd services/engine && .venv/bin/pytest -q` | **62 passed** (v0.5.0, incl. body/bedroom temperature and journal sync) |
+| Engine on the Android-compatible stack (Python 3.10, NumPy 1.23, pandas 2.1, SciPy 1.8, statsmodels 0.14, scikit-learn 1.3) | `PYTHONPATH=. python3.10 -m pytest` with `requirements.android-compat.txt` | **62 passed** locally (v0.5.0; CI job `engine-tests-android-stack`) |
 | Desktop unit (Vitest) | `cd apps/desktop && npx vitest run` | **17 passed** (v0.2.0) |
 | Desktop end-to-end (real Electron + Playwright, Xvfb) | `xvfb-run -a node tests/e2e/app.e2e.mjs` | **28/28 steps passed** (v0.4.0, incl. Explain on every analysis screen, the Temperature screen with a personal suggestion, background colours and the phone-width layout), 0 console errors |
-| Android unit (JUnit) | `cd apps/android && ./gradlew :app:testDebugUnitTest` | **6 passed** (v0.3.0) |
+| Android unit (JUnit) | `cd apps/android && ./gradlew :app:testDebugUnitTest` | **9 passed** (v0.5.0, incl. the phone AI client against MockWebServer) |
 | Android lint | `./gradlew :app:lintDebug` | 0 errors (warnings: newer versions available; intentional custom TrustManager for pinning) |
 | Engine smoke (stdio protocol) | `python scripts/smoke_engine.py <python>` | passed with the dev interpreter |
 | Windows bundle under Wine 9 | Windows CPython 3.12.10 + SQLCipher 4.20 + Pydantic + AES-GCM | **passed** |
@@ -42,7 +42,11 @@ listed as "not run" was run.
 | `EngineOnDeviceTest` | real engine in the app: encrypted DB (no plaintext header, wrong key refused), 60 days of demo data + recompute, overview, explain.data, correlation, no LAN server | **passed** — open 2.7 s, demo.load 3.9 s, overview 0.1 s |
 | `WebAppOnDeviceTest` | the bundled phone screens in the WebView, through the origin-restricted bridge: empty state → one imported night → dashboard → Sleep Lab → phone settings (status via `phone:*` channels) → Temperature | passed in v0.3.0; v0.4.0 in CI |
 
-Not run: a physical phone (performance with years of real data, Health Connect permission screens, battery), Samsung SDK.
+| `AnalystOnDeviceTest` (v0.5.0) | phone AI analyst end to end against a local HTTPS mock of the Responses API: consent before each round (nothing sent before approval), read-only engine tool, disclosure log, stored answer | in CI |
+| `EngineOnDeviceTest` journal part (v0.5.0) | journal entries exchanged between two on-phone engines (vitalis.journal.v1) | in CI |
+
+Not run: a physical phone (performance with years of real data, Health Connect permission screens, battery), Samsung SDK,
+the real OpenAI service from the phone, journal sync between a real phone and PC.
 
 ## What the tests cover (requirement → test)
 

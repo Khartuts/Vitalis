@@ -36,6 +36,6 @@
       set.add(cb);
       return function () { set.delete(cb); };
     },
-    reportReady: function () {},
+    reportReady: function () { if (native) native.postMessage(JSON.stringify({ kind: "reportReady" })); },
   };
 })();

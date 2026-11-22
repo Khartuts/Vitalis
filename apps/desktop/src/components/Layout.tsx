@@ -153,7 +153,7 @@ function TopBar({ online }: { online: boolean }) {
       {!IS_ANDROID && <span className="hidden md:inline"><Button variant="ghost" size="sm" onClick={() => setPalette(true)} title="Command palette (Ctrl+K)"><Command size={14} />Ctrl K</Button></span>}
       <Button variant="ghost" size="sm" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} title="Toggle light/dark theme">
         {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}</Button>
-      {!IS_ANDROID && <Button variant="primary" size="sm" onClick={() => toggleAi()} testId="toggle-ai"><Bot size={14} />Analyst</Button>}
+      <Button variant="primary" size="sm" onClick={() => toggleAi()} testId="toggle-ai"><Bot size={14} />Analyst</Button>
       <Modal open={customOpen} onOpenChange={setCustomOpen} title="Custom date range">
         <div className="flex items-end gap-3">
           <label className="text-xs">Start<input type="date" className={inputCls} value={cs} onChange={(e) => setCs(e.target.value)} /></label>

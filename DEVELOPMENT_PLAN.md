@@ -54,7 +54,7 @@ Legend: ✅ Implemented · 🧪 Tested (automated, in this environment) · 🌐 
 | A | Engine on the phone: Android builds of pydantic_core + sqlcipher3, Chaquopy integration, `EngineHost`, on-device test on an emulator | ✅ 🧪 (emulator) |
 | B | Phone screens: Overview + daily check-in, Sleep, Recovery, Stress, Cardio, Activity, Trends with Explain buttons, fed directly from Health Connect | ✅ preview 🧪 (emulator); physical phone ⏳ |
 | C | Journal and experiments synced both ways with the PC (vitalis.journal.v1, newer record wins, deletions travel) | ✅ 🧪 (engine + endpoint tests; device engine-to-engine) |
-| D | AI analyst (consent preview) and reports on the phone | planned |
+| D | AI analyst (consent preview, OpenAI API key) and reports (print to PDF, JSON/CSV) on the phone | ✅ 🧪 (unit: client vs mock; device: analyst end to end vs local HTTPS mock) |
 
 ## Next steps (in order)
 1. ~~Push to GitHub and verify the installer on a real Windows runner~~ — done (run 44783780670). Remaining: a person

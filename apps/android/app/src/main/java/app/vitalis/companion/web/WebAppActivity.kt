@@ -29,6 +29,7 @@ import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import app.vitalis.companion.BuildConfig
 import app.vitalis.companion.MainActivity
+import app.vitalis.companion.ai.PhoneOrchestrator
 import app.vitalis.companion.engine.EngineException
 import app.vitalis.companion.engine.PhoneEngine
 import app.vitalis.companion.engine.ThermalReminderWorker
@@ -68,6 +69,12 @@ class WebAppActivity : ComponentActivity() {
     private var pickResult: CompletableDeferred<Uri?>? = null
     private var notifyResult: CompletableDeferred<Boolean>? = null
     private val pickFile = registerForActivityResult(ActivityResultContracts.OpenDocument()) { pickResult?.complete(it) }
+    private var saveResult: CompletableDeferred<Uri?>? = null
+    private val saveJson = registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { saveResult?.complete(it) }
+    private val saveCsv = registerForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { saveResult?.complete(it) }
+    private val savePng = registerForActivityResult(ActivityResultContracts.CreateDocument("image/png")) { saveResult?.complete(it) }
+    private val ai by lazy { PhoneOrchestrator(this, emit = { ev -> emit("ai:event", ev) }) }
+    private var printView: WebView? = null
     private val askNotifications = registerForActivityResult(ActivityResultContracts.RequestPermission()) { notifyResult?.complete(it) }
     private val allowed: Set<String> by lazy {
         assets.open("web/engine-methods.json").use { s -> json.parseToJsonElement(s.reader().readText()).jsonArray.map { it.jsonPrimitive.content }.toSet() }
@@ -86,35 +93,7 @@ class WebAppActivity : ComponentActivity() {
             v.setPadding(b.left, b.top, b.right, b.bottom)
             WindowInsetsCompat.CONSUMED
         }
-        val loader = WebViewAssetLoader.Builder().addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this)).build()
-        web.settings.apply {
-            javaScriptEnabled = true
-            domStorageEnabled = true // remembered theme / background / date range
-            allowFileAccess = false
-            allowContentAccess = false
-            setSupportMultipleWindows(false)
-        }
-        web.webViewClient = object : WebViewClientCompat() {
-            override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? =
-                loader.shouldInterceptRequest(request.url)
-            override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean =
-                !request.url.toString().startsWith("$ORIGIN/") // never navigate away from the bundled app
-        }
-        check(WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) { "This WebView is too old for VITALIS." }
-        WebViewCompat.addWebMessageListener(web, "VitalisAndroid", setOf(ORIGIN)) { _, message, _, isMainFrame, reply ->
-            if (!isMainFrame) return@addWebMessageListener
-            val msg = runCatching { json.parseToJsonElement(message.data ?: "").jsonObject }.getOrNull() ?: return@addWebMessageListener
-            page = reply
-            if (msg["kind"]?.jsonPrimitive?.contentOrNull == "invoke") {
-                val id = msg["id"]?.jsonPrimitive?.intOrNull ?: return@addWebMessageListener
-                val channel = msg["channel"]?.jsonPrimitive?.contentOrNull ?: ""
-                val payload = msg["payload"] ?: JsonNull
-                scope.launch {
-                    val result = handle(channel, payload)
-                    reply.postMessage(buildJsonObject { put("kind", "resolve"); put("id", id); put("result", result) }.toString())
-                }
-            }
-        }
+        setUpWebView(web, onReportReady = null)
         val route = intent.getStringExtra(EXTRA_ROUTE)?.takeIf { it.matches(Regex("^[a-z]{2,20}$")) }
         web.loadUrl(if (route != null) "$START_URL#/$route" else START_URL)
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
@@ -123,6 +102,72 @@ class WebAppActivity : ComponentActivity() {
             }
         })
         scope.launch { startEngineAndImport() }
+    }
+
+    /** Asset loader, locked-down settings and the origin-restricted bridge for any VITALIS WebView. */
+    @SuppressLint("SetJavaScriptEnabled")
+    private fun setUpWebView(wv: WebView, onReportReady: (() -> Unit)?) {
+        val loader = WebViewAssetLoader.Builder().addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this)).build()
+        wv.settings.apply {
+            javaScriptEnabled = true
+            domStorageEnabled = true // remembered theme / background / date range
+            allowFileAccess = false
+            allowContentAccess = false
+            setSupportMultipleWindows(false)
+        }
+        wv.webViewClient = object : WebViewClientCompat() {
+            override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? =
+                loader.shouldInterceptRequest(request.url)
+            override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean =
+                !request.url.toString().startsWith("$ORIGIN/") // never navigate away from the bundled app
+        }
+        check(WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) { "This WebView is too old for VITALIS." }
+        WebViewCompat.addWebMessageListener(wv, "VitalisAndroid", setOf(ORIGIN)) { _, message, _, isMainFrame, reply ->
+            if (!isMainFrame) return@addWebMessageListener
+            val msg = runCatching { json.parseToJsonElement(message.data ?: "").jsonObject }.getOrNull() ?: return@addWebMessageListener
+            when (msg["kind"]?.jsonPrimitive?.contentOrNull) {
+                "hello" -> if (onReportReady == null) page = reply
+                "reportReady" -> onReportReady?.invoke()
+                "invoke" -> {
+                    if (onReportReady == null) page = reply
+                    val id = msg["id"]?.jsonPrimitive?.intOrNull ?: return@addWebMessageListener
+                    val channel = msg["channel"]?.jsonPrimitive?.contentOrNull ?: ""
+                    val payload = msg["payload"] ?: JsonNull
+                    // The hidden report page may only read data.
+                    val allowedHere = onReportReady == null || channel == "engine:call"
+                    scope.launch {
+                        val result = if (allowedHere) handle(channel, payload) else fail("not_allowed", "Not available while printing.")
+                        reply.postMessage(buildJsonObject { put("kind", "resolve"); put("id", id); put("result", result) }.toString())
+                    }
+                }
+            }
+        }
+    }
+
+    /** Report PDF: the print route rendered in a hidden WebView, then Android's print dialog (Save as PDF). */
+    private suspend fun printReport(start: String, end: String): JsonObject {
+        val ready = CompletableDeferred<Unit>()
+        val wv = WebView(this)
+        printView?.destroy()
+        printView = wv
+        setUpWebView(wv, onReportReady = { ready.complete(Unit) })
+        wv.loadUrl("$START_URL#/print/report?start=$start&end=$end")
+        kotlinx.coroutines.withTimeout(90_000) { ready.await() }
+        val name = "VITALIS report $start – $end"
+        val pm = getSystemService(android.print.PrintManager::class.java)
+        pm.print(name, wv.createPrintDocumentAdapter(name),
+            android.print.PrintAttributes.Builder().setMediaSize(android.print.PrintAttributes.MediaSize.ISO_A4).build())
+        return buildJsonObject { put("printed", true) }
+    }
+
+    /** Asks where to save, then writes the bytes there (Android's file-save dialog). */
+    private suspend fun saveAs(launcher: androidx.activity.result.ActivityResultLauncher<String>, fileName: String, bytes: suspend () -> ByteArray): JsonObject {
+        saveResult = CompletableDeferred()
+        launcher.launch(fileName)
+        val uri = saveResult!!.await() ?: return ok(JsonNull)
+        val data = bytes()
+        withContext(Dispatchers.IO) { contentResolver.openOutputStream(uri)!!.use { it.write(data) } }
+        return ok(buildJsonObject { put("path", uri.toString()); put("bytes", data.size) })
     }
 
     private suspend fun startEngineAndImport() {
@@ -241,6 +286,47 @@ class WebAppActivity : ComponentActivity() {
                     ok(r)
                 } finally { file.delete() }
             }
+            "ai:status" -> ok(buildJsonObject {
+                putJsonObject("chatgpt") { put("connected", false); put("sharing", false); put("available", false); put("usageUrl", "") }
+                putJsonObject("openai_api") { put("configured", SyncRepository(this@WebAppActivity).store.get(PhoneOrchestrator.KEY) != null) }
+                putJsonObject("local") { put("enabled", false); put("baseUrl", "") }
+            })
+            "ai:models" -> if (p.str("provider") != "openai_api") fail("not_available_on_phone", "On the phone the analyst uses an OpenAI API key.") else ok(ai.models())
+            "ai:apikey:set" -> {
+                val key = (p.str("apiKey") ?: "").trim()
+                if (!key.startsWith("sk-") || key.length !in 20..400) fail("invalid_key", "That does not look like an OpenAI API key.")
+                else { SyncRepository(this).store.put(PhoneOrchestrator.KEY, key); ok(buildJsonObject { put("ok", true) }) }
+            }
+            "ai:apikey:clear" -> { SyncRepository(this).store.put(PhoneOrchestrator.KEY, null); ok(buildJsonObject { put("ok", true) }) }
+            "ai:send" -> ok(JsonPrimitive(ai.ask(scope, p)))
+            "ai:decide" -> { ai.decide(p.str("requestId") ?: "", p.bool("approve"), p.bool("approveRemaining")); ok(JsonNull) }
+            "ai:cancel" -> { ai.cancel(p.str("requestId") ?: ""); ok(JsonNull) }
+            "report:pdf" -> ok(printReport(p.str("start")!!, p.str("end")!!))
+            "report:json" -> {
+                val (a, b) = p.str("start")!! to p.str("end")!!
+                saveAs(saveJson, "vitalis-report-$a-$b.json") {
+                    val rep = PhoneEngine.get(this).call("report.build", buildJsonObject { put("start", a); put("end", b) })
+                    Json { prettyPrint = true }.encodeToString(JsonElement.serializer(), rep).toByteArray()
+                }
+            }
+            "export:csv" -> {
+                val (a, b) = p.str("start")!! to p.str("end")!!
+                saveAs(saveCsv, "vitalis-features-$a-$b.csv") {
+                    val tmp = File(cacheDir, "export-${UUID.randomUUID()}.csv")
+                    try {
+                        PhoneEngine.get(this).call("export.features_csv", buildJsonObject {
+                            put("start", a); put("end", b); put("path", tmp.absolutePath); p["features"]?.let { put("features", it) }
+                        })
+                        tmp.readBytes()
+                    } finally { tmp.delete() }
+                }
+            }
+            "chart:savePng" -> {
+                val url = p.str("dataUrl") ?: ""
+                val name = (p.str("name") ?: "vitalis-chart").replace(Regex("[^\\w .-]"), "").take(80)
+                if (!url.startsWith("data:image/png;base64,")) fail("invalid_image", "Not a PNG image.")
+                else saveAs(savePng, "$name.png") { android.util.Base64.decode(url.substringAfter(","), android.util.Base64.DEFAULT) }
+            }
             else -> fail("not_available_on_phone", "This is available in the VITALIS desktop app.")
         }
     } catch (e: EngineException) {
@@ -286,6 +372,7 @@ class WebAppActivity : ComponentActivity() {
 
     override fun onDestroy() {
         scope.cancel()
+        printView?.destroy()
         imports.values.forEach { it.delete() }
         web.destroy()
         super.onDestroy()

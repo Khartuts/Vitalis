@@ -35,8 +35,8 @@ android {
         applicationId = "app.vitalis.companion"
         minSdk = 28
         targetSdk = 36
-        versionCode = 4
-        versionName = "0.4.0"
+        versionCode = 5
+        versionName = "0.5.0"
         buildConfigField("boolean", "HAS_SAMSUNG_SDK", hasSamsungSdk.toString())
         buildConfigField("boolean", "HAS_ENGINE", withEngine.toString())
         if (withEngine) ndk { abiFilters += engineAbis }
@@ -134,8 +134,11 @@ dependencies {
         implementation("com.google.code.gson:gson:2.15.0")
     }
     testImplementation("junit:junit:4.13.2")
+    testImplementation("com.squareup.okhttp3:mockwebserver3:5.4.0")
     androidTestImplementation("androidx.test.ext:junit:1.3.0")
     androidTestImplementation("androidx.test:runner:1.7.0")
     androidTestImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
+    androidTestImplementation("com.squareup.okhttp3:mockwebserver3:5.4.0")
+    androidTestImplementation("com.squareup.okhttp3:okhttp-tls:5.4.0")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
 }
