@@ -6,7 +6,7 @@
   var native = window.VitalisAndroid;
   var pending = new Map();
   var nextId = 1;
-  var listeners = { "engine:event": new Set(), "ai:event": new Set() };
+  var listeners = { "engine:event": new Set(), "ai:event": new Set(), "phone:event": new Set() };
   window.__VITALIS_PLATFORM__ = "android";
   if (native) {
     native.onmessage = function (ev) {

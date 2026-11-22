@@ -3,6 +3,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import type { RouteDef } from "../App";
 import { useT } from "../i18n";
 import { fmtDate } from "../lib/format";
+import { onPhoneEvent } from "../lib/bridge";
 import { useGlobalRange, useStatus } from "../lib/hooks";
 import { IS_ANDROID } from "../lib/platform";
 import { useUi, type Preset } from "../lib/store";
@@ -55,6 +56,7 @@ export function Layout({ routes, active, aside, children }: { routes: RouteDef[]
         <div className="flex min-w-0 flex-1 flex-col">
           <MobileHeader routes={routes} active={active} />
           <TopBar online={online} />
+          {IS_ANDROID && <PhoneStatus />}
           <main id="main" className="min-h-0 flex-1 overflow-auto px-3 pb-24 pt-4 md:px-7 md:py-6" tabIndex={-1}>
             <div className="mx-auto max-w-[1500px]">{children}</div>
             <footer className="mx-auto mt-10 max-w-[1500px] border-t border-line pt-3 text-[11px] text-muted">{t("disclaimer")}</footer>
@@ -77,7 +79,7 @@ function MobileHeader({ routes, active }: { routes: RouteDef[]; active: string }
     <div className="flex items-center gap-2 border-b border-line bg-s1 px-3 py-2 md:hidden">
       <button onClick={() => setOpen(true)} aria-label="Menu" data-testid="mobile-menu" className="rounded-md p-1.5 text-fg2 hover:bg-s2"><Menu size={18} /></button>
       <span className="text-sm font-semibold tracking-[0.18em]">VITALIS</span>
-      <span className="ml-auto truncate text-[11px] text-muted">{status.data?.profile_name ?? ""}</span>
+      {!IS_ANDROID && <span className="ml-auto truncate text-[11px] text-muted">{status.data?.profile_name ?? ""}</span>}
       {open && (
         <div className="fixed inset-0 z-50 flex flex-col bg-s1" role="dialog" aria-label="All screens">
           <div className="flex items-center border-b border-line px-3 py-2">
@@ -160,5 +162,30 @@ function TopBar({ online }: { online: boolean }) {
         </div>
       </Modal>
     </header>
+  );
+}
+
+/** Phone: Health Connect import progress, shown inside the app (never under the system status bar). */
+function PhoneStatus() {
+  const [msg, setMsg] = useState<{ text: string; tone: "info" | "good" | "error" } | null>(null);
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const off = onPhoneEvent((e) => {
+      clearTimeout(timer);
+      if (e.type === "import_progress") setMsg({ text: e.text, tone: "info" });
+      else if (e.type === "import_done") {
+        setMsg(e.records > 0 ? { text: `Imported ${e.summary}`, tone: "good" } : { text: "Up to date", tone: "good" });
+        timer = setTimeout(() => setMsg(null), 5000);
+      } else if (e.type === "import_error") setMsg({ text: e.message, tone: "error" });
+    });
+    return () => { off(); clearTimeout(timer); };
+  }, []);
+  if (!msg) return null;
+  return (
+    <div role="status" data-testid="phone-status"
+      className={cx("flex items-center gap-2 border-b border-line px-3 py-1.5 text-xs", msg.tone === "error" ? "text-critical" : msg.tone === "good" ? "text-good" : "text-fg2")}>
+      {msg.tone === "info" && <RefreshCw size={12} className="animate-spin" />}<span className="truncate">{msg.text}</span>
+      <button className="ml-auto text-muted" aria-label="Dismiss" onClick={() => setMsg(null)}><X size={14} /></button>
+    </div>
   );
 }

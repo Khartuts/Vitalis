@@ -11,6 +11,16 @@ Create a **private profile** (stored only on this PC, encrypted) or a **demo pro
 3. Evening: **Habit Journal → Daily check-in** (Ctrl+J). Logging caffeine, alcohol, walks, stress and mood is what
    makes the Correlation Lab useful.
 
+## Temperature
+**Temperature** shows your overnight skin temperature (from the watch, via Health Connect) compared with your own
+usual, nights that were warmer than usual, and **tonight's suggested bedroom temperature** with its reasons. Log the
+actual bedroom temperature each evening (on that screen or in the journal under Environment); after about 12 nights at
+different temperatures the suggestion is based on your own sleep instead of general guidance. On the phone you can turn
+on an evening reminder (Settings → This phone). VITALIS only suggests — set the temperature yourself or with a
+SmartThings routine.
+
+**Appearance**: Settings → Appearance offers seven dark and five light background colours.
+
 ## Explain buttons
 Every card on the analysis screens has an **Explain** button. It opens a built-in explanation that works offline:
 what the card shows, how it is calculated, how to read it and its limitations — plus **Your data**, which says how

@@ -1,21 +1,29 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { IS_ANDROID } from "../lib/platform";
-import { ArrowDown, ArrowUp, CheckCircle2, ExternalLink, KeyRound, QrCode, ShieldCheck, Smartphone, Trash2, Upload } from "lucide-react";
+import { ArrowDown, ArrowUp, CheckCircle2, ExternalLink, KeyRound, QrCode, RefreshCw, ShieldCheck, Smartphone, Trash2, Upload } from "lucide-react";
 import { useState } from "react";
 import { useAiStatus } from "../components/AiPanel";
 import { Badge, Button, Card, Empty, ErrorBox, Field, Grid, inputCls, Modal, Note, PageHeader, Skeleton, Spinner, Stat, Switch, TabPanel, Tabs } from "../components/ui";
 import { engine, invoke, openExternal } from "../lib/bridge";
 import { fmtDate } from "../lib/format";
 import { useEngine, useGlobalRange, useStatus } from "../lib/hooks";
-import { addDays, useUi } from "../lib/store";
+import { IS_ANDROID } from "../lib/platform";
+import { addDays, DARK_BACKGROUNDS, LIGHT_BACKGROUNDS, useUi } from "../lib/store";
 
 export default function Settings() {
-  const [tab, setTab] = useState(IS_ANDROID ? "sources" : "profile");
-  if (IS_ANDROID) { // phone: the PC-only connections (LAN sync server, file imports, Google, AI keys) are not offered here
+  const [tab, setTab] = useState(IS_ANDROID ? "phone" : "profile");
+  if (IS_ANDROID) { // phone: PC-only connections (LAN sync server, Google, AI keys) are not offered here
     return (
       <div data-testid="settings-page">
         <PageHeader title="Data Sources & Settings" subtitle="Everything is stored on this phone, encrypted." />
-        <SourcesTab />
+        <Tabs value={tab === "profile" ? "phone" : tab} onChange={setTab} tabs={[{ id: "phone", label: "This phone" }, { id: "pc", label: "Desktop sync" },
+          { id: "prefs", label: "Preferences" }, { id: "import", label: "Imports" }, { id: "sources", label: "Sources & quality" }, { id: "privacy", label: "Privacy" }]}>
+          <TabPanel value="phone"><PhoneDataTab /></TabPanel>
+          <TabPanel value="pc"><PhoneDesktopSyncTab /></TabPanel>
+          <TabPanel value="prefs"><Grid cols={2}><PreferencesOnly /><AppearanceCard /></Grid></TabPanel>
+          <TabPanel value="import"><ImportTab /></TabPanel>
+          <TabPanel value="sources"><SourcesTab /></TabPanel>
+          <TabPanel value="privacy"><PhonePrivacyTab /></TabPanel>
+        </Tabs>
       </div>
     );
   }
@@ -52,7 +60,6 @@ function ProfileTab() {
   const qc = useQueryClient();
   const prefs = useEngine<any>("prefs.get");
   const profiles = useQuery({ queryKey: ["profiles"], queryFn: () => invoke<any>("profiles:list") });
-  const { locale, setLocale, theme, setTheme } = useUi();
   const [edit, setEdit] = useState<Record<string, any>>({});
   const { run, view } = useRun();
   if (!prefs.data) return <Skeleton h={300} />;
@@ -73,8 +80,6 @@ function ProfileTab() {
           <Field label="Sleep need (minutes)" hint="Used for sleep debt, recovery and the planner"><input className={inputCls} inputMode="numeric" value={v("sleep_need_min")} onChange={(e) => setEdit({ ...edit, sleep_need_min: e.target.value })} data-testid="pref-sleep-need" /></Field>
           <Field label="Birth year" hint="Max HR ≈ 208 − 0.7 × age (Tanaka)"><input className={inputCls} inputMode="numeric" value={v("birth_year")} onChange={(e) => setEdit({ ...edit, birth_year: e.target.value })} /></Field>
           <Field label="Max heart rate (overrides estimate)"><input className={inputCls} inputMode="numeric" value={v("hr_max")} onChange={(e) => setEdit({ ...edit, hr_max: e.target.value })} /></Field>
-          <Field label="Language"><select className={inputCls} value={locale} onChange={(e) => setLocale(e.target.value as any)}><option value="en">English</option><option value="hr">Hrvatski (partial)</option></select></Field>
-          <Field label="Theme"><select className={inputCls} value={theme} onChange={(e) => setTheme(e.target.value as any)}><option value="dark">Dark</option><option value="light">Light</option><option value="system">System</option></select></Field>
         </div>
         <div className="mt-4 grid grid-cols-3 gap-3">
           <Field label="Baseline window (days)"><input className={inputCls} value={v("baseline_window_days")} onChange={(e) => setEdit({ ...edit, baseline_window_days: e.target.value })} /></Field>
@@ -83,6 +88,7 @@ function ProfileTab() {
         </div>
         <div className="mt-4 flex items-center gap-3"><Button variant="primary" onClick={save} disabled={!Object.keys(edit).length} testId="prefs-save">Save</Button>{view}</div>
       </Card>
+      <AppearanceCard />
       <Card title="Profiles" subtitle="Each profile is a separate encrypted database">
         <ul className="space-y-2">{(profiles.data?.profiles ?? []).map((p: any) => (
           <li key={p.id} className="flex items-center gap-2 text-[13px]"><span className="flex-1">{p.name}</span>{p.demo && <Badge tone="warning">synthetic</Badge>}
@@ -179,7 +185,7 @@ function ImportTab() {
       <Card title="Import files" subtitle="Nothing is imported until you review the preview">
         <div className="flex flex-wrap gap-2">
           <Button onClick={() => pick("samsung_export")} testId="import-samsung"><Upload size={13} />Samsung Health export (ZIP/CSV)</Button>
-          <Button onClick={() => pick("vitalis_sync_file")} testId="import-syncfile"><Upload size={13} />Encrypted phone file (.vitalis-sync)</Button>
+          {!IS_ANDROID && <Button onClick={() => pick("vitalis_sync_file")} testId="import-syncfile"><Upload size={13} />Encrypted phone file (.vitalis-sync)</Button>}
         </div>
         <div className="mt-3">{view}</div>
         {result && (
@@ -451,4 +457,155 @@ function PrivacyTab() {
 // data.wipe requires the exact confirmation phrase, validated again in main (Zod literal) and in the engine (Pydantic).
 async function invokeWipe() {
   await invoke("data:wipe", { confirm: "DELETE ALL MY DATA" });
+}
+
+
+/** Theme, background colour and language (desktop and phone). */
+function AppearanceCard() {
+  const { theme, setTheme, bgDark, bgLight, setBackground, locale, setLocale } = useUi();
+  const pick = (mode: "dark" | "light", id: string) => {
+    setBackground(mode, id);
+    if (theme !== mode) setTheme(mode); // picking a background shows it right away
+  };
+  return (
+    <Card title="Appearance" subtitle="Theme and background colour. Text and chart colours keep their tested contrast on every background." testId="appearance-card">
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Theme"><select className={inputCls} value={theme} onChange={(e) => setTheme(e.target.value as any)} data-testid="theme-select"><option value="dark">Dark</option><option value="light">Light</option><option value="system">System</option></select></Field>
+        <Field label="Language"><select className={inputCls} value={locale} onChange={(e) => setLocale(e.target.value as any)}><option value="en">English</option><option value="hr">Hrvatski (partial)</option></select></Field>
+      </div>
+      <div className="mt-3 text-xs text-fg2">Dark backgrounds</div>
+      <div className="mt-1 flex flex-wrap gap-2">{DARK_BACKGROUNDS.map(([id, label, color]) => (
+        <Swatch key={id} label={label} color={color} active={bgDark === id} onClick={() => pick("dark", id)} testId={`bg-dark-${id}`} />))}</div>
+      <div className="mt-3 text-xs text-fg2">Light backgrounds</div>
+      <div className="mt-1 flex flex-wrap gap-2">{LIGHT_BACKGROUNDS.map(([id, label, color]) => (
+        <Swatch key={id} label={label} color={color} active={bgLight === id} onClick={() => pick("light", id)} testId={`bg-light-${id}`} />))}</div>
+    </Card>
+  );
+}
+
+function Swatch({ label, color, active, onClick, testId }: { label: string; color: string; active: boolean; onClick: () => void; testId: string }) {
+  return (
+    <button onClick={onClick} data-testid={testId} aria-pressed={active}
+      className={`flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs ${active ? "border-accent text-fg" : "border-line text-fg2 hover:border-line-strong"}`}>
+      <span className="h-5 w-5 rounded-full border border-line-strong" style={{ background: color }} />{label}
+    </button>
+  );
+}
+
+/** Phone: personal settings without the desktop's profile list. */
+function PreferencesOnly() {
+  const qc = useQueryClient();
+  const prefs = useEngine<any>("prefs.get");
+  const [edit, setEdit] = useState<Record<string, any>>({});
+  const { run, view } = useRun();
+  if (!prefs.data) return <Skeleton h={300} />;
+  const v = (k: string) => (k in edit ? edit[k] : prefs.data[k] ?? "");
+  const save = () => run(async () => {
+    const values: Record<string, any> = {};
+    for (const [k, x] of Object.entries(edit)) values[k] = x === "" ? null : ["sleep_need_min", "birth_year", "hr_max"].includes(k) ? Number(x) : x;
+    await engine("prefs.set", { values });
+    setEdit({});
+    qc.invalidateQueries();
+  }, "Saved — analytics are recomputed in the background.");
+  return (
+    <Card title="Personal settings">
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Sleep need (minutes)" hint="Sleep debt, recovery, planner"><input className={inputCls} inputMode="numeric" value={v("sleep_need_min")} onChange={(e) => setEdit({ ...edit, sleep_need_min: e.target.value })} /></Field>
+        <Field label="Birth year" hint="Max HR ≈ 208 − 0.7 × age"><input className={inputCls} inputMode="numeric" value={v("birth_year")} onChange={(e) => setEdit({ ...edit, birth_year: e.target.value })} /></Field>
+        <Field label="Max heart rate"><input className={inputCls} inputMode="numeric" value={v("hr_max")} onChange={(e) => setEdit({ ...edit, hr_max: e.target.value })} /></Field>
+        <Field label="Time zone"><input className={inputCls} value={v("display_timezone")} onChange={(e) => setEdit({ ...edit, display_timezone: e.target.value })} /></Field>
+      </div>
+      <div className="mt-4 flex items-center gap-3"><Button variant="primary" onClick={save} disabled={!Object.keys(edit).length}>Save</Button>{view}</div>
+    </Card>
+  );
+}
+
+const fmtWhen = (iso?: string | null) => (iso ? new Date(iso).toLocaleString() : "never");
+
+/** Phone: Health Connect import into this phone's VITALIS, history check, evening reminder. */
+function PhoneDataTab() {
+  const qc = useQueryClient();
+  const st = useQuery({ queryKey: ["phone:status"], queryFn: () => invoke<any>("phone:status"), refetchInterval: 5000 });
+  const [probe, setProbe] = useState<any>(null);
+  const [time, setTime] = useState<string | null>(null);
+  const { run, view, busy } = useRun();
+  if (st.error) return <ErrorBox error={st.error} />;
+  if (!st.data) return <Skeleton h={300} />;
+  const d = st.data;
+  const doSync = (full: boolean) => run(async () => { const r = await invoke<any>("phone:sync", { full }); qc.invalidateQueries(); return r; },
+    full ? "History re-read: everything Health Connect shares is in VITALIS." : "Up to date.");
+  return (
+    <Grid cols={2}>
+      <Card title="Health Connect → this phone" subtitle="VITALIS on this phone reads Health Connect directly; the PC is not needed." testId="phone-data">
+        <div className="grid grid-cols-2 gap-3">
+          <Stat label="Health Connect" value={d.healthConnect.available ? "available" : "not available"} sub={`${d.healthConnect.granted} data types allowed`} />
+          <Stat label="Last import" value={d.importing ? "importing…" : fmtWhen(d.lastImport?.at)} sub={d.lastImport?.summary ?? ""} />
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button variant="primary" disabled={busy || d.importing} onClick={() => doSync(false)} testId="phone-sync"><RefreshCw size={13} />Import new data</Button>
+          <Button disabled={busy || d.importing} onClick={() => doSync(true)}>Re-read all history</Button>
+          <Button variant="ghost" onClick={() => invoke("phone:openCompanion")}>Permissions & pairing</Button>
+        </div>
+        <div className="mt-2">{view}</div>
+        {!d.healthConnect.history && <Note>"Access past data" is not allowed: Health Connect then shares only about 30 days. Allow it under Permissions.</Note>}
+      </Card>
+      <Card title="How far back does Health Connect go?" subtitle="The oldest record Health Connect lets VITALIS read, per data type">
+        <Button size="sm" disabled={busy} onClick={() => run(async () => setProbe(await invoke<any>("phone:probe")))}>Check now</Button>
+        {probe && (
+          <ul className="mt-2 space-y-0.5 text-xs">{(probe.types ?? []).filter((t: any) => t.permission === "granted").map((t: any) => (
+            <li key={t.type} className="flex gap-2"><span className="flex-1 text-fg2">{t.label}</span><span className="num">{t.count} in 30 d</span><span className="num w-24 text-right">{t.oldest ? String(t.oldest).slice(0, 10) : "—"}</span></li>))}</ul>
+        )}
+        <Note>If the oldest dates are recent although Samsung Health has years of data, Samsung Health shared only from when you switched sharing on. Bring older history in with the Samsung Health export (Imports tab).</Note>
+      </Card>
+      <Card title="Evening bedroom-temperature reminder" subtitle="A notification with tonight's suggested bedroom temperature">
+        <div className="flex flex-wrap items-center gap-3">
+          <Switch checked={!!d.reminder?.enabled} label="Remind me each evening" onChange={(on) => run(async () => { await invoke("phone:reminder", { enabled: on, time: time ?? d.reminder?.time ?? "21:00" }); qc.invalidateQueries({ queryKey: ["phone:status"] }); })} />
+          <input type="time" className={`${inputCls} !w-28`} value={time ?? d.reminder?.time ?? "21:00"} onChange={(e) => setTime(e.target.value)}
+            onBlur={() => d.reminder?.enabled && run(async () => { await invoke("phone:reminder", { enabled: true, time: time ?? "21:00" }); qc.invalidateQueries({ queryKey: ["phone:status"] }); })} />
+        </div>
+        <Note>Suggestions only: VITALIS does not change any device.</Note>
+      </Card>
+    </Grid>
+  );
+}
+
+/** Phone: sending this phone's Health Connect data to the paired desktop app. */
+function PhoneDesktopSyncTab() {
+  const st = useQuery({ queryKey: ["phone:status"], queryFn: () => invoke<any>("phone:status"), refetchInterval: 5000 });
+  const { run, view, busy } = useRun();
+  if (!st.data) return <Skeleton h={200} />;
+  const pc = st.data.pc;
+  return (
+    <Card title="Desktop sync" subtitle="Sends this phone's Health Connect data to VITALIS on your PC over your Wi-Fi (pinned, encrypted)">
+      {!pc.paired ? <Empty title="Not paired with a PC">On the PC: Data Sources & Settings → Phone sync → Pair a phone. Then scan the QR code under Permissions & pairing.</Empty> : (
+        <>
+          <Stat label="Paired with" value={pc.name} sub={`Last sync ${fmtWhen(pc.lastSync)}`} />
+          {pc.lastResult && <p className="mt-1 text-xs text-fg2">{pc.lastResult}</p>}
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button variant="primary" disabled={busy} onClick={() => run(async () => invoke("phone:pcSync", { full: false }))}><RefreshCw size={13} />Send to PC now</Button>
+            <Button disabled={busy} onClick={() => run(async () => invoke("phone:pcSync", { full: true }))}>Re-send all history</Button>
+          </div>
+        </>
+      )}
+      <div className="mt-2">{view}</div>
+      <div className="mt-3"><Button variant="ghost" onClick={() => invoke("phone:openCompanion")}>Permissions & pairing</Button></div>
+    </Card>
+  );
+}
+
+/** Phone: delete this phone's VITALIS database (Health Connect itself is not touched). */
+function PhonePrivacyTab() {
+  const qc = useQueryClient();
+  const [confirm, setConfirm] = useState("");
+  const { run, view } = useRun();
+  return (
+    <Card title="Delete this phone's VITALIS data" subtitle="The encrypted database and its key on this phone">
+      <p className="text-[13px] text-fg2">Health Connect and Samsung Health keep their data. The next import reads it again unless you remove VITALIS's permissions.</p>
+      <div className="mt-3 flex items-end gap-2">
+        <Field label='Type DELETE to confirm'><input className={inputCls} value={confirm} onChange={(e) => setConfirm(e.target.value)} /></Field>
+        <Button variant="danger" disabled={confirm !== "DELETE"} onClick={() => run(async () => { await invoke("phone:wipe", { confirm }); setConfirm(""); qc.invalidateQueries(); }, "Deleted.")}>Delete</Button>
+      </div>
+      <div className="mt-2">{view}</div>
+    </Card>
+  );
 }

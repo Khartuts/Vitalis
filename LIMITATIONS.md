@@ -31,11 +31,21 @@
   compiled**. It uses reflection for undocumented field names. Expect import/name fixes on first build.
 * Developer mode is for personal testing; distributing the app requires Samsung partnership approval.
 
-## Phone app (preview, v0.3.0)
+## Body and bedroom temperature
+* Wrist skin temperature during sleep is relative to the watch's own baseline and is affected by the room, bedding
+  and watch fit; it is not core body temperature and not a fever measurement.
+* The bedroom-temperature suggestion is an exploratory heuristic (thermal.v1-exploratory), not validated. It becomes
+  personal only after about 12 nights with a recorded bedroom temperature at different temperatures.
+* SmartThings: suggestions only. Lasting app access requires SmartThings' paid API Access plan and a registered app;
+  personal access tokens expire after 24 hours (SmartThings developer documentation, checked 2026-11-22). VITALIS
+  therefore does not read room sensors or change devices yet.
+
+## Phone app (preview)
 * Full VITALIS on the phone runs the desktop's engine on Python 3.10 with older scientific packages (the newest with
   Android builds); the engine is tested on that set in CI. Verified on an Android 14 **emulator** only — not yet on a
   physical phone: speed with years of real heart-rate data, memory use and battery are unknown.
-* First version: Overview, Sleep, Recovery, Stress, Cardio, Activity, Trends, Journal and Sources. Not yet on the
+* On the phone: Overview, Sleep, Recovery, Stress, Cardio, Temperature, Activity, Trends, Journal and Settings
+  (Health Connect import, desktop sync, Samsung Health export import, preferences, appearance). Not yet on the
   phone: Correlation Lab and experiments, AI analyst, reports, journal sync with the PC (planned steps C–D).
 * The APK is large (~120 MB, arm64 only) because it contains Python, NumPy, pandas, SciPy and statsmodels.
 * It replaces the companion app (same app id); builds are debug-signed with a key that changes per build, so

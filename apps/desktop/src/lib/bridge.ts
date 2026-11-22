@@ -5,7 +5,7 @@ declare global {
   interface Window {
     vitalis: {
       invoke: (channel: string, payload?: unknown) => Promise<{ ok: boolean; data?: unknown; error?: { code: string; message: string } }>;
-      on: (channel: "engine:event" | "ai:event", cb: (p: any) => void) => () => void;
+      on: (channel: "engine:event" | "ai:event" | "phone:event", cb: (p: any) => void) => () => void;
       reportReady: () => void;
     };
   }
@@ -30,3 +30,5 @@ export const engine = <T = any>(method: RendererEngineMethod, params?: Record<st
 export const onEngineEvent = (cb: (e: any) => void) => window.vitalis?.on("engine:event", cb) ?? (() => undefined);
 export const onAiEvent = (cb: (e: AiEvent) => void) => window.vitalis?.on("ai:event", cb) ?? (() => undefined);
 export const openExternal = (url: string) => invoke("app:openExternal", { url });
+/** Phone app only: Health Connect import progress and results. */
+export const onPhoneEvent = (cb: (e: any) => void) => window.vitalis?.on("phone:event", cb) ?? (() => undefined);

@@ -20,7 +20,10 @@ interface UiState {
   pendingQuestion: string | null;
   evidence: { metric: string; start: string; end: string; label?: string } | null;
   locale: "en" | "hr";
+  bgDark: string;
+  bgLight: string;
   setTheme: (t: UiState["theme"]) => void;
+  setBackground: (mode: "dark" | "light", name: string) => void;
   setPreset: (p: Preset) => void;
   setCustom: (s: string, e: string) => void;
   toggleAi: (open?: boolean) => void;
@@ -35,8 +38,9 @@ export const useUi = create<UiState>()(
   persist(
     (set) => ({
       theme: "dark", preset: "30", customStart: null, customEnd: null, aiOpen: false, paletteOpen: false,
-      chartContext: null, pendingQuestion: null, evidence: null, locale: "en",
+      chartContext: null, pendingQuestion: null, evidence: null, locale: "en", bgDark: "midnight", bgLight: "paper",
       setTheme: (theme) => set({ theme }),
+      setBackground: (mode, name) => set(mode === "dark" ? { bgDark: name } : { bgLight: name }),
       setPreset: (preset) => set({ preset }),
       setCustom: (customStart, customEnd) => set({ preset: "custom", customStart, customEnd }),
       toggleAi: (open) => set((s) => ({ aiOpen: open ?? !s.aiOpen })),
@@ -47,7 +51,8 @@ export const useUi = create<UiState>()(
       showEvidence: (evidence) => set({ evidence }),
       setLocale: (locale) => set({ locale }),
     }),
-    { name: "vitalis-ui", partialize: (s) => ({ theme: s.theme, preset: s.preset, customStart: s.customStart, customEnd: s.customEnd, locale: s.locale }) },
+    { name: "vitalis-ui", partialize: (s) => ({ theme: s.theme, preset: s.preset, customStart: s.customStart, customEnd: s.customEnd, locale: s.locale,
+      bgDark: s.bgDark, bgLight: s.bgLight }) },
   ),
 );
 
@@ -63,3 +68,8 @@ export function useRange(today: string | undefined) {
   const start = preset === "custom" && customStart ? customStart : addDays(end, -(Number(preset) - 1));
   return { start, end, days: Math.round((Date.parse(end) - Date.parse(start)) / 86400000) + 1 };
 }
+
+export const DARK_BACKGROUNDS = [["midnight", "Midnight", "#151a21"], ["graphite", "Graphite", "#1a1a1a"], ["ocean", "Ocean", "#111a2b"],
+  ["forest", "Forest", "#121c16"], ["plum", "Plum", "#1b1420"], ["black", "Black", "#0b0b0c"], ["cocoa", "Cocoa", "#1c1713"]] as const;
+export const LIGHT_BACKGROUNDS = [["paper", "Paper", "#fbfbfa"], ["sand", "Sand", "#fcfbf7"], ["mist", "Mist", "#fafcfd"],
+  ["mint", "Mint", "#fafdfb"], ["rose", "Rose", "#fdfafa"]] as const;

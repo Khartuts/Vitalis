@@ -8,10 +8,10 @@ listed as "not run" was run.
 
 | Suite | Command | Result |
 |---|---|---|
-| Engine (pytest) | `cd services/engine && .venv/bin/pytest -q` | **53 passed** (v0.3.0) |
-| Engine on the Android-compatible stack (Python 3.10, NumPy 1.23, pandas 2.1, SciPy 1.8, statsmodels 0.14, scikit-learn 1.3) | `PYTHONPATH=. python3.10 -m pytest` with `requirements.android-compat.txt` | **52 passed** locally (v0.3.0; CI job `engine-tests-android-stack`) |
+| Engine (pytest) | `cd services/engine && .venv/bin/pytest -q` | **58 passed** (v0.4.0, incl. body/bedroom temperature) |
+| Engine on the Android-compatible stack (Python 3.10, NumPy 1.23, pandas 2.1, SciPy 1.8, statsmodels 0.14, scikit-learn 1.3) | `PYTHONPATH=. python3.10 -m pytest` with `requirements.android-compat.txt` | **58 passed** locally (v0.4.0; CI job `engine-tests-android-stack`) |
 | Desktop unit (Vitest) | `cd apps/desktop && npx vitest run` | **17 passed** (v0.2.0) |
-| Desktop end-to-end (real Electron + Playwright, Xvfb) | `xvfb-run -a node tests/e2e/app.e2e.mjs` | **25/25 steps passed** (v0.3.0, incl. an Explain panel on every analysis screen and the phone-width layout), 0 console errors |
+| Desktop end-to-end (real Electron + Playwright, Xvfb) | `xvfb-run -a node tests/e2e/app.e2e.mjs` | **28/28 steps passed** (v0.4.0, incl. Explain on every analysis screen, the Temperature screen with a personal suggestion, background colours and the phone-width layout), 0 console errors |
 | Android unit (JUnit) | `cd apps/android && ./gradlew :app:testDebugUnitTest` | **6 passed** (v0.3.0) |
 | Android lint | `./gradlew :app:lintDebug` | 0 errors (warnings: newer versions available; intentional custom TrustManager for pinning) |
 | Engine smoke (stdio protocol) | `python scripts/smoke_engine.py <python>` | passed with the dev interpreter |
@@ -40,7 +40,7 @@ listed as "not run" was run.
 |---|---|---|
 | Android builds of `pydantic_core` 2.50.5 and `sqlcipher3` 0.6.5 (arm64-v8a, x86_64) | Chaquopy build-wheel, Python 3.10 | built |
 | `EngineOnDeviceTest` | real engine in the app: encrypted DB (no plaintext header, wrong key refused), 60 days of demo data + recompute, overview, explain.data, correlation, no LAN server | **passed** — open 2.7 s, demo.load 3.9 s, overview 0.1 s |
-| `WebAppOnDeviceTest` | the bundled phone screens in the WebView, through the origin-restricted bridge: empty state → one imported night → dashboard → Sleep Lab | **passed** |
+| `WebAppOnDeviceTest` | the bundled phone screens in the WebView, through the origin-restricted bridge: empty state → one imported night → dashboard → Sleep Lab → phone settings (status via `phone:*` channels) → Temperature | passed in v0.3.0; v0.4.0 in CI |
 
 Not run: a physical phone (performance with years of real data, Health Connect permission screens, battery), Samsung SDK.
 

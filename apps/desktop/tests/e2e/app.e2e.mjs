@@ -219,6 +219,17 @@ await step("command palette and theme toggle", async () => {
 });
 
 let fp = null; let port = null; let code = null;
+await step("appearance: background colours apply and are remembered", async () => {
+  await page.getByTestId("nav-settings").click();
+  await page.getByTestId("appearance-card").waitFor({ timeout: 15000 });
+  await page.getByTestId("bg-dark-ocean").click();
+  assert.equal(await page.evaluate(() => document.documentElement.dataset.bg), "ocean");
+  assert.equal(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--surface-1").trim()), "#111a2b");
+  await shot("12a-background-ocean");
+  await page.getByTestId("bg-dark-midnight").click();
+  assert.equal(await page.evaluate(() => document.documentElement.dataset.bg), "midnight");
+});
+
 await step("phone-width layout: bottom tabs, menu, single column", async () => {
   await page.setViewportSize({ width: 412, height: 900 });
   await page.getByTestId("tab-overview").click();

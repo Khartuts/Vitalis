@@ -3,7 +3,7 @@
 Every stored result records the algorithm version that produced it (`daily_features.algo_version`,
 `scores.algo_version`, `analysis_versions`). Versions: `features.v1`, `baseline.robust.v1`, `recovery.v1`,
 `energy.v1-exploratory`, `load.trimp-edwards.v1`, `arousal.v1`, `sri.v1`, `sleepdebt.ewma.v1`, `insights.v1`,
-`stats.v1`, `nof1.v1`. These are **original VITALIS methods** built on published physiological and statistical
+`stats.v1`, `nof1.v1`, `thermal.v1-exploratory`. These are **original VITALIS methods** built on published physiological and statistical
 concepts; they do not reproduce WHOOP Recovery, Garmin Body Battery, Samsung Energy Score or any vendor score.
 
 ## 0. Ingestion, time and quality
@@ -112,3 +112,22 @@ Deterministic rules: RHR z ≥ 1.5 on ≥ 2 of the last 3 nights; 7-night mean T
 days; recovery z change ≥ 0.6 week-over-week; 90-day RHR trend (Theil–Sen, Kendall p < 0.01, ≥ 1 bpm/30 d);
 3-day data gaps; FDR-surviving habit associations with |ρ| ≥ 0.3. Each insight has numbers, baseline, completeness,
 confidence, action and evidence links; deduplicated by key, one insight per topic per period.
+
+## 10. Body and bedroom temperature (`thermal.v1-exploratory`)
+* **Overnight skin temperature**: mean of the source's skin-temperature deviations during the main sleep
+  (Health Connect `SkinTemperatureRecord`, relative to the source's baseline); an absolute value only when the source
+  states its baseline (baseline + deviation, provenance *calculated*). Compared per night with the **personal**
+  baseline (baseline.robust.v1; SD floor 0.1 °C). A night ≥ +0.5 °C above the personal median is "warmer than usual";
+  an insight appears on 2 of the last 3 nights, worded as a non-diagnostic observation (illness, alcohol, warm room,
+  menstrual cycle; not a fever measurement).
+* **Bedroom temperature per night** (dated by wake day): mean of `room_temperature` samples during the main sleep
+  (room sensor), else the journal entry `bedroom_temp_c` of the previous evening.
+* **Suggestion for tonight**: start from general guidance for adults (cool bedroom, about 16–19 °C; 18 °C). If ≥ 12
+  nights with a bedroom temperature spanning ≥ 2 °C exist, nights are grouped into 1.5 °C bands (≥ 4 nights each);
+  the band with the highest mean sleep efficiency is used (its median, rounded to 0.5 °C) when its advantage over the
+  worst band has a bootstrap 95 % CI above zero (2 000 resamples, seeded). Adjustment from the mean personal
+  skin-temperature deviation of the last 3 nights: ≥ +0.6 °C → −1 °C; ≥ +0.3 °C with WASO > usual + 10 min or
+  efficiency < usual − 2 pp → −0.5 °C; ≤ −0.3 °C with sleep latency > 25 min → +0.5 °C. Rounded to 0.5 °C and
+  clipped to the user's limits (default 16–22 °C). Every suggestion lists its reasons and basis
+  (personal / general). Suggestions only: VITALIS controls no device. Data arrive after the watch syncs, so this is
+  for the next night, not a live closed loop.

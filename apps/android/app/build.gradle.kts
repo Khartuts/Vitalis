@@ -35,8 +35,8 @@ android {
         applicationId = "app.vitalis.companion"
         minSdk = 28
         targetSdk = 36
-        versionCode = 3
-        versionName = "0.3.0"
+        versionCode = 4
+        versionName = "0.4.0"
         buildConfigField("boolean", "HAS_SAMSUNG_SDK", hasSamsungSdk.toString())
         buildConfigField("boolean", "HAS_ENGINE", withEngine.toString())
         if (withEngine) ndk { abiFilters += engineAbis }

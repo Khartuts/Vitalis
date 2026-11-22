@@ -81,6 +81,11 @@ class WebAppOnDeviceTest {
             waitFor(sc, 180_000, "the dashboard after import") { it.contains("Last night's sleep") }
             sc.onActivity { it.webViewForTest().evaluateJavascript("location.hash = '#/sleep'", null) }
             waitFor(sc, 120_000, "the Sleep Lab") { it.contains("Sleep Lab") && it.contains("Total sleep time") }
+            // Phone settings: status comes from the app through the phone:* channels.
+            sc.onActivity { it.webViewForTest().evaluateJavascript("location.hash = '#/settings'", null) }
+            waitFor(sc, 60_000, "the phone settings") { it.contains("Health Connect → this phone") && it.contains("data types allowed") }
+            sc.onActivity { it.webViewForTest().evaluateJavascript("location.hash = '#/temperature'", null) }
+            waitFor(sc, 60_000, "the Temperature screen") { it.contains("Tonight's bedroom temperature") && it.contains("°C") }
         }
     }
 }

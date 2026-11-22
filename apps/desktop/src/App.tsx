@@ -67,10 +67,20 @@ export default function App() {
   const theme = useUi((s) => s.theme);
   const profiles = useQuery({ queryKey: ["profiles"], queryFn: () => invoke<{ profiles: any[]; active: any; last: string | null }>("profiles:list") });
 
+  const bgDark = useUi((s) => s.bgDark);
+  const bgLight = useUi((s) => s.bgLight);
   useEffect(() => {
     if (theme === "system") document.documentElement.removeAttribute("data-theme");
     else document.documentElement.setAttribute("data-theme", theme);
-  }, [theme]);
+    const mq = window.matchMedia("(prefers-color-scheme: light)");
+    const apply = () => {
+      const light = theme === "light" || (theme === "system" && mq.matches);
+      document.documentElement.setAttribute("data-bg", light ? bgLight : bgDark);
+    };
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, [theme, bgDark, bgLight]);
 
   useEffect(() => onEngineEvent((e) => {
     if (e.type === "data_changed") qc.invalidateQueries();
