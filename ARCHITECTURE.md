@@ -119,6 +119,14 @@ HRV is never computed from averaged HR. RMSSD/SDNN computation exists only for g
 5. Fallback: phone writes `*.vitalis-sync` = AES-256-GCM(file key, JSON batch) for USB/cloud-drive transfer; PC verifies tag and imports with the same idempotency rules.
 6. Tokens can be revoked per device; pairing codes expire; expired tokens return 401 → re-pair flow.
 
+### 8a. Journal and experiment sync (vitalis.journal.v1)
+`POST /v1/journal/exchange` (same pinned TLS and device token as batches): the phone sends the habit definitions,
+journal entries, day notes and experiments it changed since its last exchange, plus deletion markers (migration 3);
+the PC applies each record only if it is newer than its own copy and answers with its own changes since the phone's
+bookmark. Applied records keep their original change time, so exchanges do not ping-pong. Health data are not part of
+it (each device reads Health Connect; the phone also sends batches to the PC). Clock differences between devices can
+decide near-simultaneous edits; that is accepted for one person's own devices.
+
 ## 9. Security summary
 
 See `SECURITY.md`. DB key: 256-bit random, wrapped by Electron `safeStorage` (Windows DPAPI). Backups: SQLCipher export re-keyed with a user passphrase (scrypt-derived). OAuth/API secrets: `safeStorage`-wrapped files. CSP: `default-src 'self'`; no remote code. No telemetry, analytics or ads SDKs.

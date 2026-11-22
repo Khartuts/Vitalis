@@ -3,6 +3,8 @@ package app.vitalis.companion.sync
 import android.content.Context
 import android.os.Build
 import app.vitalis.companion.BuildConfig
+import app.vitalis.companion.engine.EngineHost
+import app.vitalis.companion.engine.PhoneEngine
 import app.vitalis.companion.hc.HcSerializer
 import app.vitalis.companion.hc.HealthConnectSource
 import app.vitalis.companion.samsung.SamsungSource
@@ -180,8 +182,10 @@ class SyncRepository(private val context: Context) {
                 client.sendBatch(payload(recs, dels, seq++, cursor), token)
             }, progress = progress)
             sendSamsung(client, token, progress)
+            val journal = exchangeJournal(client, token, progress)
             val n = counts.values.sum()
-            val msg = (if (full) "Re-read all history: " else "Synced ") + "$n records in $seq batches (${counts.summary()})."
+            val msg = (if (full) "Re-read all history: " else "Synced ") + "$n records in $seq batches (${counts.summary()})." +
+                (journal?.let { " $it" } ?: "")
             store.put("last_sync", Instant.now().toString()); store.put("last_result", msg)
             SyncResult(true, msg, n, seq)
         } catch (e: SyncHttpException) {
@@ -189,6 +193,29 @@ class SyncRepository(private val context: Context) {
             else SyncResult(false, "Desktop rejected the data: ${e.message}")
         } catch (e: Exception) {
             SyncResult(false, e.message ?: e.javaClass.simpleName)
+        }
+    }
+
+    /**
+     * Journal and experiments both ways with the PC (phone app with the on-phone engine only): the phone sends what it
+     * changed since the last exchange, applies what the PC changed, and keeps both bookmarks. Newer records win.
+     */
+    private suspend fun exchangeJournal(client: SyncClient, token: String, progress: (String) -> Unit): String? {
+        if (!EngineHost.AVAILABLE) return null
+        progress("Journal: exchanging with the PC…")
+        return try {
+            val eng = PhoneEngine.get(context)
+            val local = eng.call("journal.export_changes", buildJsonObject { put("since", store.get("journal_sent_until")) }).jsonObject
+            val resp = client.exchangeJournal(buildJsonObject { put("since", store.get("journal_pc_cursor")); put("changes", local) }.toString(), token)
+            val pcChanges = resp["changes"]!!.jsonObject
+            val applied = eng.call("journal.import_changes", buildJsonObject { put("changes", pcChanges) }).jsonObject
+            store.put("journal_sent_until", local["now"]!!.jsonPrimitive.content)
+            store.put("journal_pc_cursor", pcChanges["now"]!!.jsonPrimitive.content)
+            val sent = listOf("entries", "entry_tombstones", "habits", "experiments").sumOf { local[it]?.jsonArray?.size ?: 0 }
+            val got = listOf("entries", "deleted_entries", "habits", "experiments", "deleted").sumOf { applied[it]?.jsonPrimitive?.intOrNull ?: 0 }
+            "Journal: $sent change(s) sent, $got received."
+        } catch (e: SyncHttpException) {
+            if (e.status == 404) "Journal sync needs VITALIS 0.5 or newer on the PC." else "Journal sync failed: ${e.message}"
         }
     }
 

@@ -327,4 +327,16 @@ CREATE TABLE analysis_versions (
     (2, "sleep end offset (DST-correct wake times)", r"""
 ALTER TABLE sleep_sessions ADD COLUMN end_offset_min INTEGER;
 """),
+    (3, "journal/experiment sync between phone and PC (change times and deletion markers)", r"""
+ALTER TABLE journal_habits ADD COLUMN updated_at TEXT;
+UPDATE journal_habits SET updated_at = created_at WHERE updated_at IS NULL;
+CREATE TABLE journal_tombstones (
+  local_date TEXT NOT NULL,
+  habit_key TEXT NOT NULL,
+  deleted_at TEXT NOT NULL,
+  PRIMARY KEY (local_date, habit_key)
+);
+CREATE TABLE habit_tombstones (key TEXT PRIMARY KEY, deleted_at TEXT NOT NULL);
+CREATE TABLE experiment_tombstones (id TEXT PRIMARY KEY, deleted_at TEXT NOT NULL);
+"""),
 ]

@@ -25,6 +25,7 @@ from ..db.backup import create_backup, restore_backup
 from ..db.connection import utcnow
 from ..ingest import google_health, samsung_export
 from ..ingest.pipeline import DEFAULT_SOURCE_PRIORITY, Importer, source_priority
+from .. import journal_sync
 from ..journal import (delete_habit, entries_range, get_day, list_habits, private_habit_keys, set_day,
                        upsert_habit)
 from ..quality.checks import quality_report
@@ -111,6 +112,10 @@ def on_sync_event(engine: Engine, ev: dict) -> None:
         s = ev.get("summary") or {}
         if s.get("inserted") or s.get("updated") or s.get("deleted"):
             _schedule_sync_recompute(engine, s.get("min_date"), s.get("max_date"))
+    if ev.get("event") == "journal_exchanged":
+        d = (ev.get("summary") or {}).get("changed_dates") or []
+        if d:
+            _schedule_sync_recompute(engine, d[0], d[-1])
 
 
 # ---------------------------------------------------------------------------------------------- system / prefs
@@ -913,6 +918,33 @@ def ingest_local_batch(engine: Engine, p: LocalBatchP):
     if summary.get("inserted") or summary.get("updated") or summary.get("deleted"):
         _schedule_sync_recompute(engine, summary.get("min_date"), summary.get("max_date"))
     return summary
+
+
+class JournalExportP(P):
+    since: str | None = Field(None, max_length=40)
+
+
+@method("journal.export_changes", JournalExportP)
+def journal_export_changes(engine: Engine, p: JournalExportP):
+    """Phone app only (not on the renderer allow-list): journal/experiment changes since `since` (vitalis.journal.v1)."""
+    return journal_sync.export_changes(engine.db, p.since)
+
+
+class JournalImportP(P):
+    changes: dict[str, Any]
+
+
+@method("journal.import_changes", JournalImportP)
+def journal_import_changes(engine: Engine, p: JournalImportP):
+    """Phone app only: apply the PC's journal/experiment changes (newer record wins)."""
+    try:
+        n = journal_sync.import_changes(engine.db, p.changes)
+    except ValueError as exc:
+        raise RpcError("invalid_exchange", str(exc))
+    rng = journal_sync.date_range(n)
+    if rng:
+        _schedule_sync_recompute(engine, rng[0].isoformat(), rng[1].isoformat())
+    return n
 
 
 # ---------------------------------------------------------------------------------------------- export / backup / data

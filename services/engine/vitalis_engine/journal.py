@@ -53,10 +53,11 @@ _TIME = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
 def ensure_builtins(db: Database) -> None:
     now = utcnow()
     for i, (key, label, cat, vt, unit, opts) in enumerate(BUILTIN_HABITS):
+        # Built-ins start with the epoch as change time, so any real edit on either device wins in a journal sync.
         db.execute("INSERT OR IGNORE INTO journal_habits(key, label, category, value_type, unit, options, private,"
-                   " active, sort_order, builtin, created_at) VALUES (?,?,?,?,?,?,?,?,?,1,?)",
+                   " active, sort_order, builtin, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,1,?,?)",
                    (key, label, cat, vt, unit, json.dumps(opts) if opts else None,
-                    1 if key in ("smoking", "alcohol_units") else 0, 1, i, now))
+                    1 if key in ("smoking", "alcohol_units") else 0, 1, i, now, "1970-01-01T00:00:00Z"))
 
 
 def list_habits(db: Database, include_inactive: bool = True) -> list[dict]:
@@ -78,22 +79,27 @@ def upsert_habit(db: Database, h: dict) -> dict:
         raise ValueError("invalid value_type")
     existing = db.query_one("SELECT builtin, sort_order FROM journal_habits WHERE key=?", (key,))
     order = existing["sort_order"] if existing else 1000
+    now = h.get("updated_at") or utcnow()  # sync passes the origin's change time
     db.execute("INSERT INTO journal_habits(key, label, category, value_type, unit, options, private, active, sort_order,"
-               " builtin, created_at) VALUES (?,?,?,?,?,?,?,?,?,0,?) ON CONFLICT(key) DO UPDATE SET label=excluded.label,"
-               " category=excluded.category, unit=excluded.unit, options=excluded.options, private=excluded.private,"
-               " active=excluded.active",
+               " builtin, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,0,?,?) ON CONFLICT(key) DO UPDATE SET"
+               " label=excluded.label, category=excluded.category, unit=excluded.unit, options=excluded.options,"
+               " private=excluded.private, active=excluded.active, updated_at=excluded.updated_at",
                (key, h["label"], h.get("category", "custom"), h["value_type"], h.get("unit"),
                 json.dumps(h.get("options")) if h.get("options") else None, 1 if h.get("private") else 0,
-                0 if h.get("active") is False else 1, order, utcnow()))
+                0 if h.get("active") is False else 1, order, now, now))
+    db.execute("DELETE FROM habit_tombstones WHERE key=?", (key,))
     return next(x for x in list_habits(db) if x["key"] == key)
 
 
-def delete_habit(db: Database, key: str) -> None:
+def delete_habit(db: Database, key: str, at: str | None = None) -> None:
+    now = at or utcnow()
     row = db.query_one("SELECT builtin FROM journal_habits WHERE key=?", (key,))
     if row and row["builtin"]:
-        db.execute("UPDATE journal_habits SET active=0 WHERE key=?", (key,))
+        db.execute("UPDATE journal_habits SET active=0, updated_at=? WHERE key=?", (now, key))
     else:
         db.execute("DELETE FROM journal_habits WHERE key=?", (key,))
+        db.execute("INSERT INTO habit_tombstones(key, deleted_at) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET"
+                   " deleted_at=excluded.deleted_at", (key, now))
 
 
 def get_day(db: Database, d: date) -> dict:
@@ -138,12 +144,17 @@ def set_day(db: Database, d: date, values: dict, note: str | None = None, tags: 
                 raise ValueError(f"unknown habit {key}")
             num, txt = _validate(habits[key], val)
             if num is None and txt is None:
-                conn.execute("DELETE FROM journal_entries WHERE local_date=? AND habit_key=?", (d.isoformat(), key))
+                cur = conn.execute("DELETE FROM journal_entries WHERE local_date=? AND habit_key=?", (d.isoformat(), key))
+                if cur.rowcount:  # remember the deletion so the other device removes it too
+                    conn.execute("INSERT INTO journal_tombstones(local_date, habit_key, deleted_at) VALUES (?,?,?) ON"
+                                 " CONFLICT(local_date, habit_key) DO UPDATE SET deleted_at=excluded.deleted_at",
+                                 (d.isoformat(), key, now))
                 continue
             conn.execute("INSERT INTO journal_entries(local_date, habit_key, value_num, value_text, updated_at)"
                          " VALUES (?,?,?,?,?) ON CONFLICT(local_date, habit_key) DO UPDATE SET"
                          " value_num=excluded.value_num, value_text=excluded.value_text, updated_at=excluded.updated_at",
                          (d.isoformat(), key, num, txt, now))
+            conn.execute("DELETE FROM journal_tombstones WHERE local_date=? AND habit_key=?", (d.isoformat(), key))
         if note is not None or tags is not None:
             conn.execute("INSERT INTO day_notes(local_date, note, tags, updated_at) VALUES (?,?,?,?) ON CONFLICT"
                          "(local_date) DO UPDATE SET note=excluded.note, tags=excluded.tags, updated_at=excluded.updated_at",

@@ -91,4 +91,7 @@ class SyncClient(private val hosts: List<String>, private val port: Int, private
     fun sendBatch(payload: String, token: String): JsonObject = call("/v1/batches", payload, token)
 
     fun sendAvailability(payload: String, token: String): JsonObject = call("/v1/availability", payload, token)
+
+    /** Two-way journal/experiment exchange (vitalis.journal.v1). */
+    fun exchangeJournal(body: String, token: String): JsonObject = call("/v1/journal/exchange", body, token)
 }

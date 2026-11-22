@@ -17,6 +17,7 @@ from fastapi.responses import JSONResponse
 from .. import __version__
 from ..db.connection import Database, utcnow
 from . import crypto
+from .. import journal_sync
 from .ingest import import_sync_payload
 
 MAX_BODY = 48 * 1024 * 1024
@@ -94,6 +95,18 @@ def create_app(db: Database, on_imported: Callable[[dict], None]) -> FastAPI:
             raise HTTPException(status_code=422, detail=str(exc))
         on_imported({"event": "batch_imported", "device_id": dev["id"], "summary": summary})
         return {"status": "already_imported" if summary.get("already_imported") else "imported", "summary": summary}
+
+    @app.post("/v1/journal/exchange")
+    async def journal_exchange(request: Request, authorization: str | None = Header(None)):
+        """Two-way journal/experiment sync (vitalis.journal.v1): apply the phone's changes, return the PC's."""
+        dev = auth(authorization)
+        body = await body_json(request)
+        try:
+            summary = journal_sync.import_changes(db, body.get("changes") or {})
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc))
+        on_imported({"event": "journal_exchanged", "device_id": dev["id"], "summary": summary})
+        return {"applied": summary, "changes": journal_sync.export_changes(db, body.get("since"))}
 
     @app.post("/v1/availability")
     async def availability(request: Request, authorization: str | None = Header(None)):

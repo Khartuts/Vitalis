@@ -164,5 +164,7 @@ def update_status(db: Database, eid: str, status: str) -> dict:
     return get(db, eid)
 
 
-def delete(db: Database, eid: str) -> None:
+def delete(db: Database, eid: str, at: str | None = None) -> None:
     db.execute("DELETE FROM experiments WHERE id=?", (eid,))
+    db.execute("INSERT INTO experiment_tombstones(id, deleted_at) VALUES (?,?) ON CONFLICT(id) DO UPDATE SET"
+               " deleted_at=excluded.deleted_at", (eid, at or utcnow()))

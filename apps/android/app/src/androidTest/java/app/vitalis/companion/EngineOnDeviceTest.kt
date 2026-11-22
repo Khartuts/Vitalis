@@ -62,6 +62,23 @@ class EngineOnDeviceTest {
             assertEquals("not_available", err.code)
         }
 
+        // Journal sync (vitalis.journal.v1) between two engines, as between the phone and the PC.
+        val dbA = File(ctx.filesDir, "journal-a.db").apply { delete() }
+        val dbB = File(ctx.filesDir, "journal-b.db").apply { delete() }
+        EngineHost(ctx).use { a ->
+            EngineHost(ctx).use { b ->
+                a.open(dbA, key, demo = false, timezone = "Europe/Zagreb", profileName = "phone")
+                b.open(dbB, key, demo = false, timezone = "Europe/Zagreb", profileName = "pc")
+                a.call("journal.day_set", buildJsonObject { put("date", "2026-11-20"); putJsonObject("values") { put("coffee_cups", 2); put("bedroom_temp_c", 18.5) } })
+                val changes = a.call("journal.export_changes", buildJsonObject { put("since", JsonNull) }).jsonObject
+                val applied = b.call("journal.import_changes", buildJsonObject { put("changes", changes) }).jsonObject
+                assertEquals(2, applied["entries"]!!.jsonPrimitive.int)
+                val day = b.call("journal.day_get", buildJsonObject { put("date", "2026-11-20") }).jsonObject
+                assertEquals(18.5, day["entries"]!!.jsonObject["bedroom_temp_c"]!!.jsonObject["value_num"]!!.jsonPrimitive.double, 1e-9)
+            }
+        }
+        dbA.delete(); dbB.delete()
+
         // The database file is encrypted: no plaintext SQLite header.
         val header = db.inputStream().use { it.readNBytes(16) }
         assertFalse(String(header, Charsets.ISO_8859_1).startsWith("SQLite format 3"))

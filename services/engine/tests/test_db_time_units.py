@@ -48,7 +48,7 @@ def test_upgrade_from_v1_database(tmp_path):
     finally:
         conn_mod.MIGRATIONS = orig
     new = Database(tmp_path / "old.db", key)
-    assert new.schema_version() == 2 and new.get_pref("kept") is True
+    assert new.schema_version() == max(v for v, _, _ in MIGRATIONS) and new.get_pref("kept") is True
     cols = [r["name"] for r in new.query("PRAGMA table_info(sleep_sessions)")]
     assert "end_offset_min" in cols
 
