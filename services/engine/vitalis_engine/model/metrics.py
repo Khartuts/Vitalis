@@ -65,6 +65,8 @@ METRICS: dict[str, MetricDef] = {m.key: m for m in [
               "Skin temperature relative to the source's baseline (not an absolute temperature)."),
     MetricDef("skin_temperature", "°C", "sample", "Skin temperature", (20, 42), "mean", "Absolute skin temperature."),
     MetricDef("body_temperature", "°C", "sample", "Body temperature", (33, 43), "mean", "Body temperature."),
+    MetricDef("room_temperature", "°C", "sample", "Room temperature", (0, 45), "mean",
+              "Bedroom air temperature from a room sensor (e.g. SmartThings)."),
     MetricDef("steps", "count", "interval", "Steps", (0, 100000), "sum", "Step count over an interval.", "better"),
     MetricDef("steps_daily", "count", "daily", "Steps (daily total, source-aggregated)", (0, 150000), "sum",
               "Daily step total computed by the source's de-duplicating aggregate API.", "better"),

@@ -129,6 +129,11 @@ def normalize(rec: dict) -> NormalizedRecord:
                 "skin_temp_delta", float(d["deltaC"]), "°C Δ", t, None, off, rid, sub_key=d["time"],
                 orig_value=d["deltaC"], orig_unit="°C Δ", provenance=prov,
                 meta={**meta, "baselineC": base, "location": rec.get("location")}))
+            if base is not None:  # absolute value only when the source states its baseline
+                out.measurements.append(CanonMeasurement(
+                    "skin_temperature", float(base) + float(d["deltaC"]), "°C", t, None, off, rid,
+                    sub_key=f"abs:{d['time']}", provenance=Provenance.CALCULATED,
+                    meta={**meta, "derived": "source baseline + deviation", "location": rec.get("location")}))
         return out
 
     if rtype == "BloodPressureRecord":

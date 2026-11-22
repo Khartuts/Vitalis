@@ -10,7 +10,7 @@ import { CATEGORY_LABEL, fmtDelta, fmtDuration, fmtFeature, isNum, zLabel } from
 import type { ExplainId } from "../explain/content";
 import { useEngine, useGlobalRange } from "../lib/hooks";
 
-const CARDS = ["recovery", "sleep", "rhr", "hrv", "stress", "energy", "activity", "baseline", "change", "insights", "quality", "periods"] as const;
+const CARDS = ["recovery", "sleep", "rhr", "hrv", "skin", "stress", "energy", "activity", "baseline", "change", "insights", "quality", "periods"] as const;
 type CardId = (typeof CARDS)[number];
 
 export default function Overview() {
@@ -56,6 +56,8 @@ export default function Overview() {
     rhr: () => <TrendCard title="Resting heart rate" feature="rhr" d={d} comp={comp.rhr} color="s2" to="cardio" />,
     hrv: () => <TrendCard title="Overnight HRV (source RMSSD)" feature="hrv_night_rmssd" d={d} comp={comp.hrv_night_rmssd} color="s1" to="cardio"
       emptyNote="Samsung Health does not share HRV through its public interfaces; HRV appears only if a source (e.g. Google Health) provides it." />,
+    skin: () => <TrendCard title="Overnight skin temperature (vs watch baseline)" feature="skin_temp_delta_night" d={d} comp={comp.skin_temp_delta_night} color="s5" to="temperature"
+      emptyNote="Galaxy Watch measures skin temperature during sleep; it arrives through Health Connect after the watch syncs." />,
     stress: () => <TrendCard title="Elevated HR at low movement" feature="arousal_min" d={d} comp={comp.arousal_min} color="s3" to="stress" bar
       emptyNote="Needs heart rate and steps." />,
     energy: () => <EnergyCard d={d} />,
@@ -156,7 +158,7 @@ function MiniTrend({ values, dates, color, bar }: { values: (number | null)[]; d
   );
 }
 
-const TREND_EXPLAIN: Record<string, ExplainId> = { rhr: "ov.rhr", hrv_night_rmssd: "ov.hrv", arousal_min: "ov.arousal" };
+const TREND_EXPLAIN: Record<string, ExplainId> = { rhr: "ov.rhr", hrv_night_rmssd: "ov.hrv", arousal_min: "ov.arousal", skin_temp_delta_night: "ov.skin" };
 
 function TrendCard({ title, feature, d, comp, color, to, bar, emptyNote }: { title: string; feature: string; d: any; comp: any;
   color: keyof Palette; to: string; bar?: boolean; emptyNote?: string }) {

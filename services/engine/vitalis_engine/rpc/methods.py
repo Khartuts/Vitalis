@@ -15,7 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from .. import ALGORITHM_VERSIONS, __version__
 from ..ai import prompt as ai_prompt
 from ..ai import tools as ai_tools
-from ..analytics import experiments, insights, intraday, sleep, stats
+from ..analytics import experiments, insights, intraday, sleep, stats, thermal
 from ..analytics.baseline import baseline_for, settings as baseline_settings
 from ..analytics.data import load_exercises, load_features, load_measurements, load_sleep_episodes
 from ..analytics.features import FEATURE_INFO, feature_info
@@ -132,7 +132,7 @@ def system_status(engine: Engine):
 
 PREF_KEYS = {"display_timezone", "sleep_need_min", "birth_year", "hr_max", "baseline_window_days",
              "baseline_min_provisional", "baseline_min_stable", "source_priority", "locale", "profile_name",
-             "units", "onboarding_done", "dashboard_layout", "saved_views"}
+             "units", "onboarding_done", "dashboard_layout", "saved_views", "thermal_min_c", "thermal_max_c"}
 
 
 @method("prefs.get")
@@ -144,6 +144,8 @@ def prefs_get(engine: Engine):
         out["sleep_need_min"] = 450
     w, mp, ms = baseline_settings(engine.db)
     out.update(baseline_window_days=w, baseline_min_provisional=mp, baseline_min_stable=ms)
+    out["thermal_min_c"] = float(out["thermal_min_c"] if out["thermal_min_c"] is not None else 16.0)
+    out["thermal_max_c"] = float(out["thermal_max_c"] if out["thermal_max_c"] is not None else 22.0)
     return out
 
 
@@ -166,6 +168,10 @@ def prefs_set(engine: Engine, p: PrefsSetP):
             raise RpcError("invalid_pref", "invalid birth year")
         if k == "hr_max" and v is not None and not (120 <= int(v) <= 230):
             raise RpcError("invalid_pref", "max HR must be 120–230")
+        if k in ("thermal_min_c", "thermal_max_c"):
+            v = float(v)
+            if not (10.0 <= v <= 30.0):
+                raise RpcError("invalid_pref", "bedroom temperature limits must be 10–30 °C")
         if k == "source_priority":
             if not isinstance(v, list) or not set(v) <= set(DEFAULT_SOURCE_PRIORITY):
                 raise RpcError("invalid_pref", "invalid source priority")
@@ -264,9 +270,21 @@ def explain_data(engine: Engine, p: ExplainDataP):
             "baseline_settings": {"window_days": window, "min_provisional": min_prov, "min_stable": min_stable}}
 
 
+@method("thermal.summary", RangeP)
+def thermal_summary(engine: Engine, p: RangeP):
+    a, b = p.d()
+    return thermal.summary(engine.db, a, b)
+
+
+@method("thermal.suggestion", DayP)
+def thermal_suggestion(engine: Engine, p: DayP):
+    """Suggested bedroom temperature for the night starting on the evening of `date`."""
+    return thermal.suggestion(engine.db, p.d())
+
+
 # ---------------------------------------------------------------------------------------------- overview
 KEY_FEATURES = ["sleep_tst_min", "sleep_efficiency", "rhr", "hrv_night_rmssd", "steps", "arousal_min", "trimp",
-                "spo2_night_mean", "resp_rate_night", "sleep_bedtime_min"]
+                "spo2_night_mean", "resp_rate_night", "sleep_bedtime_min", "skin_temp_delta_night"]
 
 
 @method("overview.get", DayP)
@@ -300,7 +318,7 @@ def overview_get(engine: Engine, p: DayP):
     ins = insights.list_insights(db, since=d - timedelta(days=14))
     actionable = [i for i in ins if i.get("action")][:3] or ins[:3]
     energy = intraday.energy_timeline(db, d)
-    trend_feats = ["rhr", "hrv_night_rmssd", "arousal_min", "steps", "sleep_tst_min"]
+    trend_feats = ["rhr", "hrv_night_rmssd", "arousal_min", "steps", "sleep_tst_min", "skin_temp_delta_night"]
     trends = {k: [{"date": dd.isoformat(), "value": None if pd.isna(v) else float(v)}
                   for dd, v in f.loc[d - timedelta(days=29):d, k].items()] for k in trend_feats}
     hrcov = f.at[d, "hr_coverage_pct"] if d in f.index else np.nan

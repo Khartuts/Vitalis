@@ -199,6 +199,109 @@ export const EXPLAIN = {
     ask: "How do this period's averages compare with the previous period, and which differences are meaningful?",
   },
 
+  "ov.skin": {
+    title: "Overnight skin temperature",
+    what: "How your skin temperature during sleep compared with the watch's own baseline, for the latest night and the last 30 days.",
+    how: [
+      "Mean of the skin-temperature deviations your watch reported during the main sleep (Health Connect skin temperature). These are relative to the watch's baseline, not absolute temperatures.",
+      BASELINE,
+    ],
+    read: ["Look for runs of warmer nights. The Temperature screen compares each night with your own usual and suggests tonight's bedroom temperature."],
+    limits: ["Wrist skin temperature depends on the room, bedding and watch fit; it is not core body temperature and not a fever measurement.", NOT_MEDICAL],
+    features: ["skin_temp_delta_night"],
+    algorithm: "features.v1, thermal.v1-exploratory",
+    ask: "How has my overnight skin temperature changed recently, and what might be associated with it?",
+  },
+
+  // ------------------------------------------------------------------------------------------------ Temperature
+  "tm.suggestion": {
+    title: "Tonight's bedroom temperature",
+    what: "A suggested bedroom temperature for tonight, with the reasons behind it. VITALIS only suggests; it does not change any device.",
+    how: [
+      "Starting point: general guidance for adults of a cool bedroom, roughly 16–19 °C, using 18 °C.",
+      "Personal: once there are at least 12 nights with a recorded bedroom temperature spanning at least 2 °C, nights are grouped into 1.5 °C bands. The band with the best average sleep efficiency is used if it beats your worst band clearly (bootstrap 95 % interval of the difference above zero).",
+      "Body temperature: if your overnight skin temperature was 0.6 °C or more above your usual over the last nights, 1 °C cooler; 0.3 °C or more above with more wake time than usual, 0.5 °C cooler; 0.3 °C or more below with slow sleep onset, 0.5 °C warmer.",
+      "The result is rounded to 0.5 °C and kept within your limits (default 16–22 °C).",
+    ],
+    read: [
+      "'General guidance' means VITALIS does not yet know your own best temperature; 'personal' means your own nights point to it.",
+      "Log the actual bedroom temperature each evening (here or in the journal) — that is what makes the suggestion personal.",
+    ],
+    limits: [
+      "Exploratory heuristic (thermal.v1-exploratory), not validated. Sleep efficiency is affected by many things besides temperature.",
+      "Overnight data arrive after the watch syncs (usually after waking), so this is for the next night, not a live adjustment.",
+      NOT_MEDICAL,
+    ],
+    features: ["skin_temp_delta_night", "sleep_efficiency", "sleep_waso_min"],
+    algorithm: "thermal.v1-exploratory",
+    ask: "Why is this bedroom temperature suggested for tonight, and how could I test whether it helps my sleep?",
+  },
+  "tm.skin": {
+    title: "Overnight skin temperature",
+    what: "Each night's skin temperature during sleep compared with your own usual value.",
+    how: [
+      "Per night: mean of the watch's skin-temperature readings during the main sleep (deviations from the watch's baseline; an absolute value is shown only when the source provides its baseline).",
+      "Your usual = robust median of the previous nights (provisional from 14, stable from 28 nights). Bars show the difference; red bars are at least +0.5 °C.",
+    ],
+    read: ["Single warm nights are common (warm room, late meal, alcohol). Several in a row are worth noticing together with how you feel."],
+    limits: ["Wrist skin temperature is not core body temperature and not a fever measurement.", NOT_MEDICAL],
+    features: ["skin_temp_delta_night", "skin_temp_night"],
+    algorithm: "thermal.v1-exploratory, baseline.robust.v1",
+    ask: "Which recent nights had a warmer skin temperature than usual, and what else was different on those nights?",
+  },
+  "tm.elevated": {
+    title: "Nights warmer than usual",
+    what: "Nights whose overnight skin temperature was at least 0.5 °C above your personal baseline.",
+    how: ["Same comparison as the skin temperature chart; an insight appears when this happens on 2 of the last 3 nights."],
+    read: ["Consider what was different: illness symptoms, alcohol, a warm bedroom or heavy bedding, training late, or the menstrual cycle."],
+    limits: ["VITALIS does not detect fever or illness. Use a thermometer and seek medical advice if you feel unwell.", NOT_MEDICAL],
+    features: ["skin_temp_delta_night"],
+    algorithm: "thermal.v1-exploratory",
+    ask: "What was different on my warmer-than-usual nights?",
+  },
+  "tm.bedroom": {
+    title: "Bedroom temperature and your sleep",
+    what: "How your sleep efficiency varied with the bedroom temperature you recorded (or a room sensor reported).",
+    how: [
+      "Bedroom temperature per night: a room sensor during the main sleep if available, otherwise the journal entry made that evening.",
+      "Spearman correlation with a 95 % interval, plus sleep efficiency per 1.5 °C band once there are enough nights.",
+    ],
+    read: ["A falling pattern means warmer nights went with less efficient sleep for you. Bands with only a few nights are uncertain."],
+    limits: [ASSOC, "For cause and effect, alternate two temperatures on randomly chosen nights (an N-of-1 experiment in the Lab)."],
+    features: ["sleep_efficiency"],
+    algorithm: "thermal.v1-exploratory, stats.v1",
+    ask: "What does my data say about bedroom temperature and my sleep?",
+  },
+  "tm.skin_sleep": {
+    title: "Skin temperature and your sleep",
+    what: "Whether warmer or cooler nights (skin temperature) went together with better or worse sleep, and with the bedroom temperature.",
+    how: ["Same-night pairs; Spearman correlation with a 95 % interval using an effective sample size for day-to-day carry-over; at least 10 nights."],
+    read: ["'Inconclusive' when the interval includes zero."],
+    limits: [ASSOC],
+    features: ["skin_temp_delta_night", "sleep_efficiency", "sleep_awakenings"],
+    algorithm: "stats.v1",
+    ask: "Is my overnight skin temperature associated with how well I sleep?",
+  },
+  "tm.body": {
+    title: "Body temperature readings",
+    what: "Thermometer readings shared by your sources (for example a thermometer app writing to Health Connect).",
+    how: ["Shown exactly as recorded; values outside 33–43 °C are flagged as implausible and excluded from analysis."],
+    read: ["Compare readings taken the same way (same thermometer, same site, same time of day)."],
+    limits: [NOT_MEDICAL],
+    ask: "Summarize my body temperature readings.",
+  },
+  "tm.smarthome": {
+    title: "Smart home (SmartThings)",
+    what: "How VITALIS relates to smart-home heating and cooling.",
+    how: [
+      "VITALIS suggests a temperature; you apply it yourself on the device or with a SmartThings routine.",
+      "Direct control is not built in: SmartThings gives apps lasting access only through its paid API Access plan (an app registered in the SmartThings Developer Console), and personal access tokens expire after 24 hours.",
+    ],
+    read: ["A future room sensor could supply the bedroom temperature automatically, making the suggestion personal without manual logging."],
+    limits: ["No device is ever changed by VITALIS in this version."],
+    ask: "How should I apply tonight's suggested bedroom temperature?",
+  },
+
   // ------------------------------------------------------------------------------------------------ Sleep
   "sl.tst": {
     title: "Total sleep time",

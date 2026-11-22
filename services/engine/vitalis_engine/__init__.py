@@ -17,6 +17,7 @@ ALGORITHM_VERSIONS = {
     "sleep_regularity": "sri.v1",
     "sleep_debt": "sleepdebt.ewma.v1",
     "insights": "insights.v1",
+    "thermal": "thermal.v1-exploratory",
     "stats": "stats.v1",
     "experiments": "nof1.v1",
 }

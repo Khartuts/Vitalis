@@ -35,6 +35,7 @@ BUILTIN_HABITS = [
     ("meditation", "Meditation", "lifestyle", "boolean", None, None),
     ("breathing", "Breathing exercise", "lifestyle", "boolean", None, None),
     ("screen_before_bed", "Screens in the hour before bed", "lifestyle", "boolean", None, None),
+    ("bedroom_temp_c", "Bedroom temperature at bedtime", "environment", "number", "°C", {"min": 10, "max": 32, "step": 0.5}),
     ("mood", "Mood", "experience", "scale", "1–10", {"min": 1, "max": 10}),
     ("stress", "Perceived stress", "experience", "scale", "1–10", {"min": 1, "max": 10}),
     ("energy", "Perceived energy", "experience", "scale", "1–10", {"min": 1, "max": 10}),

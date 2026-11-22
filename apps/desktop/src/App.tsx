@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Activity, BarChart3, BookOpen, Bot, FlaskConical, FileText, Gauge, HeartPulse, Moon, Settings, TrendingUp, Waves } from "lucide-react";
+import { Activity, BarChart3, BookOpen, Bot, FlaskConical, FileText, Gauge, HeartPulse, Moon, Settings, Thermometer, TrendingUp, Waves } from "lucide-react";
 import { lazy, Suspense, useEffect, useState, type ComponentType } from "react";
 import { AiPanel } from "./components/AiPanel";
 import { CommandPalette } from "./components/CommandPalette";
@@ -16,6 +16,7 @@ const SleepLab = lazy(() => import("./pages/SleepLab"));
 const Recovery = lazy(() => import("./pages/Recovery"));
 const Stress = lazy(() => import("./pages/Stress"));
 const Cardio = lazy(() => import("./pages/Cardio"));
+const Temperature = lazy(() => import("./pages/Temperature"));
 const ActivityPage = lazy(() => import("./pages/Activity"));
 const Trends = lazy(() => import("./pages/Trends"));
 const Journal = lazy(() => import("./pages/Journal"));
@@ -27,7 +28,7 @@ const PrintReport = lazy(() => import("./pages/PrintReport"));
 
 export interface RouteDef {
   id: string;
-  key: "nav.overview" | "nav.sleep" | "nav.recovery" | "nav.stress" | "nav.cardio" | "nav.activity" | "nav.trends" | "nav.journal" | "nav.lab" | "nav.ai" | "nav.reports" | "nav.settings";
+  key: "nav.overview" | "nav.sleep" | "nav.recovery" | "nav.stress" | "nav.cardio" | "nav.temperature" | "nav.activity" | "nav.trends" | "nav.journal" | "nav.lab" | "nav.ai" | "nav.reports" | "nav.settings";
   icon: ComponentType<{ size?: number }>;
   page: ComponentType;
 }
@@ -38,6 +39,7 @@ export const ROUTES: RouteDef[] = [
   { id: "recovery", key: "nav.recovery", icon: Waves, page: Recovery },
   { id: "stress", key: "nav.stress", icon: Activity, page: Stress },
   { id: "cardio", key: "nav.cardio", icon: HeartPulse, page: Cardio },
+  { id: "temperature", key: "nav.temperature", icon: Thermometer, page: Temperature },
   { id: "activity", key: "nav.activity", icon: BarChart3, page: ActivityPage },
   { id: "trends", key: "nav.trends", icon: TrendingUp, page: Trends },
   { id: "journal", key: "nav.journal", icon: BookOpen, page: Journal },

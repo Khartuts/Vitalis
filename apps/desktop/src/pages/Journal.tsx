@@ -7,7 +7,7 @@ import { fmtDate } from "../lib/format";
 import { useEngine, useGlobalRange } from "../lib/hooks";
 import { addDays } from "../lib/store";
 
-const CATS = ["sleep", "caffeine", "hydration", "nutrition", "activity", "lifestyle", "experience", "custom"];
+const CATS = ["sleep", "caffeine", "hydration", "nutrition", "activity", "lifestyle", "environment", "experience", "custom"];
 
 export default function Journal() {
   const range = useGlobalRange();

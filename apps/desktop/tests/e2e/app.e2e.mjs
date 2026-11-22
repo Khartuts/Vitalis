@@ -80,12 +80,12 @@ await step("Explain: built-in explanation with live data, then ask the analyst",
   await page.getByTestId("ai-panel").waitFor({ state: "detached", timeout: 10000 });
 });
 
-const pages = ["sleep", "recovery", "stress", "cardio", "activity", "trends", "journal", "lab", "ai", "reports", "settings"];
+const pages = ["sleep", "recovery", "stress", "cardio", "temperature", "activity", "trends", "journal", "lab", "ai", "reports", "settings"];
 for (const p of pages) {
   await step(`screen: ${p}`, async () => {
     await page.getByTestId(`nav-${p}`).click();
     const id = { sleep: "sleep-lab", recovery: "recovery-page", stress: "stress-page", cardio: "cardio-page", activity: "activity-page",
-      trends: "trends-page", journal: "journal-page", lab: "lab-page", ai: "analyst-page", reports: "reports-page", settings: "settings-page" }[p];
+      temperature: "temperature-page", trends: "trends-page", journal: "journal-page", lab: "lab-page", ai: "analyst-page", reports: "reports-page", settings: "settings-page" }[p];
     await page.getByTestId(id).waitFor({ timeout: 30000 });
     await page.waitForTimeout(1200);
     const errs = await page.locator('[role="alert"]').allInnerTexts();
@@ -123,6 +123,18 @@ await step("recovery drivers explain the estimate", async () => {
   const t = await page.getByTestId("recovery-drivers").innerText();
   assert.match(t, /Resting heart rate|Insufficient/);
   await shot("04-recovery-drivers");
+});
+
+await step("temperature: tonight's bedroom suggestion is personal in the demo; bedroom temperature saves", async () => {
+  await page.getByTestId("nav-temperature").click();
+  await page.getByTestId("thermal-suggestion").waitFor({ timeout: 30000 });
+  await page.getByTestId("thermal-value").waitFor({ timeout: 30000 });
+  assert.match(await page.getByTestId("thermal-value").innerText(), /\d+\.\d °C/);
+  assert.match(await page.getByTestId("thermal-suggestion").innerText(), /personal/);
+  await page.getByTestId("bedroom-temp-input").fill("18.5");
+  await page.getByTestId("bedroom-temp-save").click();
+  await page.getByText("Saved ✓").waitFor({ timeout: 10000 });
+  await shot("04b-temperature");
 });
 
 await step("journal: save a daily check-in", async () => {

@@ -5,7 +5,8 @@ real import path. Provider = "synthetic", provenance = "synthetic", origin = "vi
 Built-in, documented effects (so the Correlation Lab has something to find): late caffeine delays sleep and
 reduces deep sleep; alcohol raises next-night resting HR and lowers HRV; walking raises steps and slightly
 improves efficiency; high perceived stress raises daytime HR at low movement; an illness episode around day 55;
-a gradual resting-HR improvement; nights without the watch and an HR gap as missing-data examples.
+a gradual resting-HR improvement; nights without the watch and an HR gap as missing-data examples; a warmer
+bedroom (journal "bedroom_temp_c", above 19 degC) causes more awakenings and a warmer overnight skin temperature.
 """
 
 from __future__ import annotations
@@ -39,6 +40,7 @@ def _off(dt: datetime) -> str:
 
 def generate(days: int = 90, end: date | None = None, seed: int = 20261120, tz: str = "Europe/Zagreb") -> dict:
     rng = np.random.default_rng(seed)
+    room_rng = np.random.default_rng(seed + 101)  # separate stream: adding bedroom temperatures leaves the rest unchanged
     Z = ZoneInfo(tz)
     end = end or date.today()
     start = end - timedelta(days=days - 1)
@@ -72,7 +74,8 @@ def generate(days: int = 90, end: date | None = None, seed: int = 20261120, tz: 
               "late_snack": bool(rng.random() < 0.25), "screen_before_bed": bool(rng.random() < 0.55),
               "water_l": float(np.clip(round(rng.normal(1.8, 0.4) * 4) / 4, 0.5, 4)),
               "workload": "heavy" if stress >= 7 else ("day off" if not workday else "normal"),
-              "exercise": d.weekday() in (0, 2, 5)}
+              "exercise": d.weekday() in (0, 2, 5),
+              "bedroom_temp_c": float(np.clip(round(room_rng.normal(19.5, 1.6) * 2) / 2, 16.0, 24.0))}
         truth[d] = tv
         if i >= 1 and d <= end and rng.random() < 0.88:
             journal[d.isoformat()] = tv
@@ -122,7 +125,8 @@ def generate(days: int = 90, end: date | None = None, seed: int = 20261120, tz: 
                         break
                     stages.append({"startTime": _iso(t), "endTime": _iso(e), "stage": stg})
                     t = e
-                if t < wake_dt and rng.random() < (0.55 - 0.08 * eff_bonus) * (1.3 if alcohol else 1.0):
+                warm_room = 1.0 + 0.30 * max(0.0, tv["bedroom_temp_c"] - 19.0)
+                if t < wake_dt and rng.random() < (0.55 - 0.08 * eff_bonus) * (1.3 if alcohol else 1.0) * warm_room:
                     aw = max(2, rng.normal(6, 3))
                     e = min(t + timedelta(minutes=aw), wake_dt)
                     stages.append({"startTime": _iso(t), "endTime": _iso(e), "stage": "awake"})
@@ -155,7 +159,8 @@ def generate(days: int = 90, end: date | None = None, seed: int = 20261120, tz: 
             recs.append({"type": "SkinTemperatureRecord", "id": nid("skt"), **base(bed_dt),
                          "startTime": _iso(bed_dt), "startZoneOffset": _off(bed_dt), "endTime": _iso(wake_dt),
                          "endZoneOffset": _off(wake_dt), "baselineC": None, "location": "wrist",
-                         "deltas": [{"time": _iso(mid), "deltaC": round(float(rng.normal(0.45 if ill else 0.0, 0.12)), 2)}]})
+                         "deltas": [{"time": _iso(mid), "deltaC": round(float(rng.normal((0.65 if ill else 0.0)
+                                                                              + 0.07 * (tv["bedroom_temp_c"] - 19.0), 0.12)), 2)}]})
         # ---- daytime nd: HR every 10 min, steps hourly, exercise ----
         if no_watch:
             continue

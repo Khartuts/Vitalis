@@ -76,7 +76,7 @@ describe("Engine command", () => {
 
 describe("Explain buttons", () => {
   const pagesDir = path.resolve(__dirname, "..", "..", "src", "pages");
-  const pages = ["Overview", "SleepLab", "Recovery", "Stress", "Cardio", "Activity", "Trends", "Journal", "Lab", "Reports"];
+  const pages = ["Overview", "SleepLab", "Recovery", "Stress", "Cardio", "Temperature", "Activity", "Trends", "Journal", "Lab", "Reports"];
   const sources = pages.map((p) => fs.readFileSync(path.join(pagesDir, `${p}.tsx`), "utf8"));
   it("every card on the analysis screens has an Explain entry", () => {
     pages.forEach((p, i) => {

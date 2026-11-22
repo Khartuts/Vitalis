@@ -61,6 +61,26 @@ def generate(db: Database, today: date) -> list[dict]:
                             [{"feature": "rhr", "start": last3[-1].isoformat(), "end": today.isoformat()}],
                             f"rhr_high:{today.isocalendar()[1]}"))
 
+    # 1b. Overnight skin temperature above the personal baseline on 2 of the last 3 nights (thermal.v1)
+    sk = load_features(db, ["skin_temp_delta_night", "skin_temp_night"], today - timedelta(days=window + 10), today)
+    skin = sk["skin_temp_delta_night"].where(sk["skin_temp_delta_night"].notna(), sk["skin_temp_night"])
+    bs = compute(skin, "skin_temp_delta_night", last3[-1], window, mp, ms)
+    if bs.status != "insufficient":
+        devs = [float(skin[d] - bs.median) for d in last3 if not pd.isna(skin[d])]
+        warm = [x for x in devs if x >= 0.5]
+        if len(warm) >= 2:
+            out.append(_ins("temperature", "notice", "Overnight skin temperature higher than usual",
+                            f"Your overnight skin temperature was {np.mean(warm):+.1f} °C above your usual on "
+                            f"{len(warm)} of the last {len(devs)} nights.", last3[-1], today,
+                            {"personal_deviation_c": devs, "baseline_median": bs.median},
+                            f"median over {bs.n} nights ({bs.status})", len(devs) / 3,
+                            "moderate" if bs.status == "stable" else "low",
+                            "This can accompany illness, alcohol, a warm bedroom or the menstrual cycle. A slightly "
+                            "cooler bedroom may help sleep (see Temperature). Wrist skin temperature is not a fever "
+                            "measurement; use a thermometer and seek medical advice if you feel unwell.",
+                            [{"feature": "skin_temp_delta_night", "start": last3[-1].isoformat(), "end": today.isoformat()}],
+                            f"skin_warm:{today.isocalendar()[1]}"))
+
     # 2. Sleep duration below baseline over 7 nights
     wk = [today - timedelta(days=i) for i in range(7)]
     tst = f.loc[wk[-1]:today, "sleep_tst_min"].dropna()
